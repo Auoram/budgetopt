@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/
+
+# Data files — too large for GitHub
+data/synthetic_campaigns.csv
+data/model.joblib
+
+# Fonts — downloaded separately
+data/fonts/
+
+# Database — user data stays local
+data/feedback.db
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini

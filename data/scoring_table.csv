@@ -1,0 +1,139 @@
+channel,sector,goal,client_type,cluster,cpl_mad,conversion_rate,reach_score,short_term_score,notes
+facebook,fintech,generate_leads,b2c,maghreb,38,0.028,9,8,Lead gen forms work well for fintech in Morocco
+facebook,fintech,generate_leads,b2c,levant,35,0.027,9,8,Large audience in Egypt; competitive but affordable
+facebook,fintech,generate_leads,b2c,gulf,110,0.035,8,8,Gulf lead quality high; smaller but rich audience
+facebook,fintech,generate_leads,b2c,europe,130,0.030,8,8,European diaspora targeting; French and Arabic
+facebook,fintech,generate_leads,b2c,north_america,180,0.032,8,8,High CPL in USA; strong purchasing power
+facebook,fintech,generate_leads,b2c,west_africa,15,0.018,7,7,Early-stage digital market; lower intent
+facebook,fintech,generate_leads,b2c,east_asia,70,0.020,6,6,Low Facebook penetration in China
+facebook,fintech,generate_leads,b2b,maghreb,90,0.018,6,7,B2B fintech on Facebook; smaller audience
+facebook,fintech,generate_leads,b2b,europe,160,0.020,6,7,European B2B fintech on Facebook; possible but noisy
+facebook,fintech,increase_sales,b2c,maghreb,55,0.025,8,7,Retargeting works well for fintech sales
+facebook,fintech,increase_sales,b2c,gulf,140,0.032,8,7,High value transactions in Gulf
+facebook,ecommerce,increase_sales,b2c,maghreb,30,0.045,10,9,Best ecommerce channel in Morocco
+facebook,ecommerce,increase_sales,b2c,levant,25,0.048,10,9,Egypt ecommerce booming; very strong
+facebook,ecommerce,increase_sales,b2c,gulf,90,0.055,10,9,Gulf Facebook dominant for ecommerce; highest reach
+facebook,ecommerce,increase_sales,b2c,europe,110,0.042,8,8,European ecommerce; GDPR limits some targeting
+facebook,ecommerce,increase_sales,b2c,north_america,150,0.045,8,8,USA ecommerce; expensive but huge market
+facebook,ecommerce,increase_sales,b2c,west_africa,12,0.032,8,8,Low CPL; growing ecommerce adoption
+facebook,ecommerce,generate_leads,b2c,maghreb,28,0.040,10,9,Strong reach for lead capture in Maghreb
+facebook,saas,generate_leads,b2b,maghreb,90,0.018,6,7,B2B audience smaller but reachable
+facebook,saas,generate_leads,b2b,levant,80,0.020,7,7,Egypt has larger B2B base
+facebook,saas,generate_leads,b2b,gulf,200,0.028,7,7,Gulf B2B decision-makers present on Facebook
+facebook,saas,generate_leads,b2b,europe,220,0.025,7,7,European B2B SaaS on Facebook
+facebook,saas,generate_leads,b2b,north_america,280,0.030,7,7,USA B2B SaaS; expensive targeting
+facebook,education,generate_leads,b2c,maghreb,25,0.035,9,8,Online courses popular in Morocco and Algeria
+facebook,education,generate_leads,b2c,levant,22,0.038,9,8,Egypt huge education market
+facebook,education,generate_leads,b2c,gulf,80,0.042,8,8,Gulf premium education; higher CPL
+facebook,education,generate_leads,b2c,europe,95,0.030,8,8,European diaspora; language courses
+facebook,education,generate_leads,b2c,north_america,120,0.032,8,8,Arabic and African diaspora; online learning
+facebook,education,generate_leads,b2c,west_africa,12,0.028,7,8,Francophone Africa; growing EdTech demand
+facebook,health,generate_leads,b2c,maghreb,35,0.030,8,7,Health apps and clinics; trust-building needed
+facebook,health,generate_leads,b2c,levant,30,0.032,8,7,Egypt health market; telemedicine growing
+facebook,health,generate_leads,b2c,gulf,110,0.040,9,8,Gulf premium health and wellness; high LTV
+facebook,health,generate_leads,b2c,north_america,180,0.035,8,8,USA health market; very high CPL
+instagram,fintech,generate_leads,b2c,maghreb,50,0.028,8,8,18-34 Maghreb; Stories and Reels effective
+instagram,fintech,generate_leads,b2c,levant,45,0.026,8,8,Egypt youth audience; growing rapidly
+instagram,fintech,generate_leads,b2c,gulf,130,0.032,9,9,Gulf Instagram penetration very high
+instagram,fintech,generate_leads,b2c,europe,150,0.028,8,8,European Instagram; visual fintech content
+instagram,fintech,generate_leads,b2c,north_america,200,0.030,8,8,USA Instagram; competitive but effective
+instagram,ecommerce,increase_sales,b2c,maghreb,32,0.042,9,9,Visual ecommerce; fashion and lifestyle strong
+instagram,ecommerce,increase_sales,b2c,levant,28,0.044,9,9,Egypt and Jordan visual commerce growing fast
+instagram,ecommerce,increase_sales,b2c,gulf,95,0.052,10,9,Gulf Instagram shopping; highest order value in MENA
+instagram,ecommerce,increase_sales,b2c,europe,120,0.038,8,8,European Instagram ecommerce; strong visual
+instagram,ecommerce,increase_sales,b2c,north_america,160,0.040,9,9,USA Instagram shopping; huge market
+instagram,education,generate_leads,b2c,maghreb,30,0.032,8,8,Reels for course previews; strong engagement
+instagram,education,generate_leads,b2c,north_america,130,0.028,8,8,USA education on Instagram; visual content
+instagram,health,generate_leads,b2c,maghreb,38,0.028,7,7,Wellness content; fitness influencers effective
+instagram,health,generate_leads,b2c,gulf,120,0.036,8,8,Gulf wellness and beauty; high engagement
+google_ads,fintech,generate_leads,b2c,maghreb,70,0.040,8,9,High intent French and Arabic search
+google_ads,fintech,generate_leads,b2c,levant,60,0.038,8,9,Arabic search dominant in Egypt
+google_ads,fintech,generate_leads,b2c,gulf,180,0.050,9,9,English and Arabic; highest CPC in MENA
+google_ads,fintech,generate_leads,b2c,europe,250,0.042,8,9,European financial search; strong intent
+google_ads,fintech,generate_leads,b2c,north_america,380,0.048,8,9,USA fintech search; very expensive
+google_ads,fintech,generate_leads,b2b,maghreb,120,0.035,7,9,B2B fintech search; niche but converting
+google_ads,fintech,generate_leads,b2b,gulf,300,0.045,8,9,Gulf B2B fintech; expensive but high quality
+google_ads,fintech,generate_leads,b2b,europe,280,0.040,8,9,European B2B fintech search; strong intent
+google_ads,ecommerce,increase_sales,b2c,maghreb,25,0.055,8,9,Shopping ads; lower competition in Morocco
+google_ads,ecommerce,increase_sales,b2c,levant,22,0.058,8,9,Egypt Google Shopping growing fast
+google_ads,ecommerce,increase_sales,b2c,gulf,75,0.058,6,9,High CPC; strong intent but lower reach than social
+google_ads,ecommerce,increase_sales,b2c,europe,140,0.060,8,9,European ecommerce search; strong conversion
+google_ads,ecommerce,increase_sales,b2c,north_america,200,0.065,8,9,USA ecommerce; extremely competitive
+google_ads,saas,generate_leads,b2b,maghreb,150,0.030,7,9,SaaS search terms; niche but converting
+google_ads,saas,generate_leads,b2b,gulf,350,0.042,8,9,Gulf SaaS search; expensive but high LTV
+google_ads,saas,generate_leads,b2b,europe,380,0.048,9,9,European SaaS B2B search; very strong
+google_ads,saas,generate_leads,b2b,north_america,500,0.055,9,9,USA SaaS search; most expensive globally
+google_ads,education,generate_leads,b2c,maghreb,40,0.038,7,9,French search for online courses
+google_ads,education,generate_leads,b2c,gulf,130,0.048,8,9,Gulf education search; English and Arabic
+google_ads,education,generate_leads,b2c,north_america,280,0.040,8,9,USA education search; high quality leads
+google_ads,health,generate_leads,b2c,maghreb,55,0.035,7,9,Health search intent very high
+google_ads,health,generate_leads,b2c,gulf,200,0.050,8,9,Gulf health search; premium patients
+google_ads,health,generate_leads,b2c,north_america,500,0.045,8,9,USA healthcare; highest CPL of all sectors
+tiktok,ecommerce,increase_sales,b2c,maghreb,22,0.038,8,8,18-30 Maghreb; impulse buying behavior
+tiktok,ecommerce,increase_sales,b2c,levant,18,0.040,8,8,Egypt TikTok very active; strong for ecommerce
+tiktok,ecommerce,increase_sales,b2c,gulf,80,0.045,8,8,Gulf TikTok growing; younger demographics
+tiktok,ecommerce,increase_sales,b2c,europe,95,0.038,8,8,European TikTok shop; fast growing
+tiktok,ecommerce,increase_sales,b2c,north_america,120,0.040,8,8,USA TikTok shop; massive reach
+tiktok,fintech,generate_leads,b2c,maghreb,40,0.025,7,7,App installs growing on TikTok in Maghreb
+tiktok,fintech,generate_leads,b2c,levant,35,0.024,7,7,Egypt youth; fintech app awareness
+tiktok,fintech,generate_leads,b2c,north_america,130,0.028,7,7,USA fintech TikTok; growing channel
+tiktok,education,generate_leads,b2c,maghreb,18,0.030,8,8,Study content goes viral; strong for courses
+tiktok,education,generate_leads,b2c,levant,15,0.032,8,8,Egypt youth education on TikTok
+tiktok,education,generate_leads,b2c,north_america,90,0.028,8,8,USA GenZ education; online courses
+tiktok,health,generate_leads,b2c,maghreb,25,0.025,7,7,Wellness and fitness content popular
+tiktok,health,generate_leads,b2c,north_america,110,0.030,8,8,USA wellness TikTok; massive reach
+email,fintech,generate_leads,b2c,maghreb,15,0.060,3,7,Low reach but cheapest CPL; needs existing list
+email,fintech,generate_leads,b2c,europe,35,0.065,3,8,European email; GDPR compliant but low reach
+email,fintech,generate_leads,b2b,maghreb,15,0.060,3,7,Lowest CPL if list exists; high quality
+email,fintech,generate_leads,b2b,levant,13,0.058,3,7,Egypt B2B email; good open rates
+email,fintech,generate_leads,b2b,gulf,30,0.070,3,8,Gulf professionals; quality leads
+email,fintech,generate_leads,b2b,europe,35,0.065,3,8,European B2B email; GDPR compliant lists
+email,fintech,generate_leads,b2b,north_america,40,0.068,3,8,USA B2B email; mature channel
+email,saas,generate_leads,b2b,maghreb,45,0.065,3,8,Trial activation emails; best conversion
+email,saas,generate_leads,b2b,gulf,80,0.075,3,8,Gulf SaaS email; premium lists
+email,saas,generate_leads,b2b,europe,90,0.072,3,8,European SaaS email nurturing
+email,saas,generate_leads,b2b,north_america,110,0.078,3,9,USA SaaS email; highest conversion rate
+email,ecommerce,increase_sales,b2c,maghreb,8,0.070,3,8,Abandoned cart emails; needs existing customer base
+email,ecommerce,increase_sales,b2c,levant,7,0.072,3,8,Egypt ecommerce email; effective but low reach
+email,ecommerce,increase_sales,b2c,gulf,18,0.080,3,9,Gulf ecommerce; high order value
+email,ecommerce,increase_sales,b2c,north_america,22,0.082,3,9,USA ecommerce email; most mature market
+email,education,generate_leads,b2c,maghreb,10,0.055,3,7,Course drip sequences; needs list
+email,education,generate_leads,b2c,north_america,20,0.065,3,8,US EdTech email; strong nurturing channel
+email,health,generate_leads,b2c,maghreb,12,0.048,3,7,Health newsletters; trust building over time
+email,health,generate_leads,b2c,north_america,25,0.060,3,8,US health email; regulated but effective
+seo,fintech,generate_leads,b2c,maghreb,55,0.030,6,2,True cost includes content production; 4-8 months
+seo,fintech,generate_leads,b2c,levant,50,0.032,6,2,Arabic SEO in Egypt; lower competition
+seo,fintech,generate_leads,b2c,gulf,90,0.038,7,2,English and Arabic; higher competition
+seo,fintech,generate_leads,b2c,europe,110,0.035,7,2,European fintech SEO; regulated niche
+seo,fintech,generate_leads,b2c,north_america,150,0.040,7,2,USA fintech SEO; very competitive
+seo,ecommerce,increase_sales,b2c,maghreb,60,0.040,7,2,Product pages in French; includes content cost
+seo,ecommerce,increase_sales,b2c,levant,50,0.042,7,2,Arabic product SEO; Egypt huge search volume
+seo,ecommerce,increase_sales,b2c,gulf,100,0.050,8,2,Gulf ecommerce SEO; high competition
+seo,ecommerce,increase_sales,b2c,north_america,140,0.055,8,2,USA ecommerce SEO; extremely competitive
+seo,saas,generate_leads,b2b,maghreb,70,0.035,6,2,Includes writer and technical SEO cost
+seo,saas,generate_leads,b2b,gulf,120,0.042,7,2,Gulf SaaS SEO; competitive but durable
+seo,saas,generate_leads,b2b,europe,140,0.048,7,2,European SaaS SEO; strong long-term channel
+seo,saas,generate_leads,b2b,north_america,180,0.055,8,2,USA SaaS SEO; highest competition globally
+seo,education,generate_leads,b2c,maghreb,55,0.040,6,2,Course content; includes production cost
+seo,education,generate_leads,b2c,north_america,100,0.045,7,2,US EdTech SEO; competitive but durable
+seo,health,generate_leads,b2c,maghreb,65,0.035,6,2,Health blog content; trust and traffic
+seo,health,generate_leads,b2c,north_america,130,0.042,7,2,US health SEO; YMYL niche; slow to rank
+linkedin,saas,generate_leads,b2b,maghreb,160,0.045,7,7,Maghreb B2B SaaS; smaller audience but quality leads
+linkedin,saas,generate_leads,b2b,levant,140,0.043,8,7,Egypt LinkedIn growing; good B2B pool
+linkedin,saas,generate_leads,b2b,gulf,280,0.055,9,8,Gulf LinkedIn B2B SaaS; best channel for decision-makers
+linkedin,saas,generate_leads,b2b,europe,300,0.058,9,8,European SaaS B2B LinkedIn; GDPR-compliant targeting
+linkedin,saas,generate_leads,b2b,north_america,400,0.055,9,8,USA SaaS LinkedIn; most expensive but highest LTV
+linkedin,fintech,generate_leads,b2b,maghreb,180,0.040,7,7,CFOs and finance decision-makers in Maghreb
+linkedin,fintech,generate_leads,b2b,levant,160,0.038,7,7,Egypt fintech B2B; growing LinkedIn base
+linkedin,fintech,generate_leads,b2b,gulf,320,0.052,9,8,Gulf fintech decision-makers; expensive but precise
+linkedin,fintech,generate_leads,b2b,europe,350,0.045,8,7,European fintech B2B; compliance-focused buyers
+linkedin,fintech,generate_leads,b2b,north_america,480,0.050,9,8,USA fintech decision-makers; very high LTV
+linkedin,education,generate_leads,b2b,maghreb,160,0.040,6,7,Maghreb corporate training; smaller B2B market
+linkedin,education,generate_leads,b2b,levant,150,0.038,7,7,Egypt corporate training; growing LinkedIn base
+linkedin,education,generate_leads,b2b,gulf,280,0.050,9,8,Gulf corporate training; high LTV clients
+linkedin,education,generate_leads,b2b,europe,320,0.048,9,8,European corporate training and B2B education
+linkedin,education,generate_leads,b2b,north_america,400,0.052,9,8,USA B2B education; expensive but precise
+linkedin,health,generate_leads,b2b,maghreb,160,0.038,6,7,Maghreb health B2B; medical professionals
+linkedin,health,generate_leads,b2b,gulf,300,0.044,8,7,Gulf health B2B; medical and wellness sector
+linkedin,health,generate_leads,b2b,europe,300,0.044,8,7,European health B2B; medical professionals
+linkedin,health,generate_leads,b2b,north_america,450,0.050,8,8,USA health B2B; highest CPL but quality
