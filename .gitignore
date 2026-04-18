@@ -16,7 +16,7 @@ data/synthetic_campaigns.csv
 data/model.joblib
 
 # Fonts — downloaded separately
-data/fonts/
+# data/fonts/
 
 # Database — user data stays local
 data/feedback.db
