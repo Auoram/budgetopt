@@ -17,6 +17,7 @@ from agent.conversation import (
     BudgetAgent,
     get_welcome_message,
 )
+from core.campaign_store import init_campaign_store, save_campaign_run
 
 # ─────────────────────────────────────────
 # STARTUP
@@ -28,6 +29,7 @@ from agent.conversation import (
 setup_langsmith()
 ensure_model_exists()
 init_db()
+init_campaign_store() 
 
 # ─────────────────────────────────────────
 # PAGE CONFIG

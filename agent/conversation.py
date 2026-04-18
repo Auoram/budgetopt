@@ -228,7 +228,11 @@ class BudgetAgent:
             from core.pipeline import pipeline
             result = pipeline(campaign)
             state.last_result = result
-
+            try:
+                from core.campaign_store import save_campaign_run
+                save_campaign_run(campaign, result, source="chat")
+            except Exception:
+                pass
             # ── Step 2: LLM explanation (second LLM call) ──
             from agent.explainer import generate_explanation
             explanation = generate_explanation(campaign, result)

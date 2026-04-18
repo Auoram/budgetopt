@@ -26,11 +26,13 @@ from core.feedback import (
 )
 from core.startup import ensure_model_exists
 from core.feedback import init_db, save_feedback, get_feedback_count
+from core.campaign_store import init_campaign_store, save_campaign_run
 
 # Run startup checks — generates model if missing
 ensure_model_exists()
 # Initialize database on every app start
 init_db()
+init_campaign_store() 
 
 st.set_page_config(
     page_title            = "BudgetOpt — Campaign Allocator",
@@ -449,7 +451,7 @@ if calculate_clicked:
 
         with st.spinner("Running optimization..."):
             result = pipeline(campaign)
-
+            save_campaign_run(campaign, result, source="form")
         st.session_state["result"]         = result
         st.session_state["campaign"]       = campaign
         st.session_state["form_submitted"] = True
