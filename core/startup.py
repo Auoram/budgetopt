@@ -27,3 +27,18 @@ def ensure_model_exists():
     from core.predictor import train
     metrics = train()
     print(f"Model trained. CPL MAE: {metrics['cpl_mae']}")
+
+
+def ensure_team_tables_exist():
+    """
+    Creates the freelancers and campaign_team tables in feedback.db
+    if they don't already exist, and seeds freelancers from CSV
+    on first run.
+    Called once at app startup alongside ensure_model_exists().
+    """
+    from core.team_db import init_team_tables
+    init_team_tables()
+
+def ensure_task_tables_exist():
+    from core.task_db import init_task_tables
+    init_task_tables()

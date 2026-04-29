@@ -24,15 +24,20 @@ from core.feedback import (
     init_db, save_feedback,
     get_feedback_count, retrain_with_feedback,
 )
-from core.startup import ensure_model_exists
+from core.startup import (
+    ensure_model_exists,
+    ensure_team_tables_exist,
+    ensure_task_tables_exist,
+)
 from core.feedback import init_db, save_feedback, get_feedback_count
 from core.campaign_store import init_campaign_store, save_campaign_run
 
-# Run startup checks — generates model if missing
-ensure_model_exists()
-# Initialize database on every app start
-init_db()
-init_campaign_store() 
+# ── Startup checks ────────────────────────────────────────
+ensure_model_exists()          # generates ML model if missing
+ensure_team_tables_exist()     # creates freelancers + campaign_team tables
+ensure_task_tables_exist()     # creates campaign_tasks table
+init_db()                      # creates feedback table
+init_campaign_store()          # creates campaign_runs table
 
 st.set_page_config(
     page_title            = "BudgetOpt — Campaign Allocator",
@@ -75,28 +80,28 @@ st.markdown("""
 
 def init_session_state():
     defaults = {
-        "company_name":     "",
-        "sector":           SECTORS[0],
-        "target_countries": ["Morocco"],
-        "client_type":      "b2c",
-        "age_min":          18,
-        "age_max":          45,
-        "audience_type":    AUDIENCE_TYPES[1],
-        "goal":             GOALS[0],
-        "horizon_months":   3,
-        "priority":         PRIORITIES[2],
-        "total_budget":     100_000.0,
-        "allowed_channels": list(CHANNELS),
-        "max_pct_pct":      50,
-        "result":           None,
-        "campaign":         None,
-        "form_submitted":   False,
+        "company_name":        "",
+        "sector":              SECTORS[0],
+        "target_countries":    ["Morocco"],
+        "client_type":         "b2c",
+        "age_min":             18,
+        "age_max":             45,
+        "audience_type":       AUDIENCE_TYPES[1],
+        "goal":                GOALS[0],
+        "horizon_months":      3,
+        "priority":            PRIORITIES[2],
+        "total_budget":        100_000.0,
+        "allowed_channels":    list(CHANNELS),
+        "max_pct_pct":         50,
+        "result":              None,
+        "campaign":            None,
+        "form_submitted":      False,
         # Feedback form state
-        "feedback_submitted":  False,
-        "feedback_actual_spend":  {},
-        "feedback_actual_leads":  {},
+        "feedback_submitted":      False,
+        "feedback_actual_spend":   {},
+        "feedback_actual_leads":   {},
         "feedback_actual_revenue": 0.0,
-        "feedback_comments":   "",
+        "feedback_comments":       "",
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -452,6 +457,7 @@ if calculate_clicked:
         with st.spinner("Running optimization..."):
             result = pipeline(campaign)
             save_campaign_run(campaign, result, source="form")
+
         st.session_state["result"]         = result
         st.session_state["campaign"]       = campaign
         st.session_state["form_submitted"] = True
@@ -717,15 +723,6 @@ with col_results:
             f"Priority: {campaign.priority.replace('_', ' ').title()} · "
             f"Max per channel: {int(campaign.max_pct_per_channel * 100)}%"
         )
-        st.divider()
-
-        # ── Summary caption ──
-        st.caption(
-            f"Budget: {int(campaign.total_budget):,} MAD · "
-            f"Horizon: {campaign.horizon_months} months · "
-            f"Priority: {campaign.priority.replace('_', ' ').title()} · "
-            f"Max per channel: {int(campaign.max_pct_per_channel * 100)}%"
-        )
 
         st.divider()
 
@@ -833,12 +830,12 @@ with col_results:
                         else str(lead_diff)
                     )
                     comparison_rows.append({
-                        "Channel":        ch.replace("_"," ").title(),
-                        "Rec. spend":     f"{rec_spend:,}",
-                        "Act. spend":     f"{act_spend:,}",
-                        "Rec. leads":     f"{rec_leads:,}",
-                        "Act. leads":     f"{act_leads:,}",
-                        "Leads diff":     diff_str,
+                        "Channel":    ch.replace("_"," ").title(),
+                        "Rec. spend": f"{rec_spend:,}",
+                        "Act. spend": f"{act_spend:,}",
+                        "Rec. leads": f"{rec_leads:,}",
+                        "Act. leads": f"{act_leads:,}",
+                        "Leads diff": diff_str,
                     })
 
                 st.dataframe(

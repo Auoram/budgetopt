@@ -1,0 +1,21 @@
+id,name,role,specialties,availability,hourly_rate_mad,experience_level,email,portfolio_url,languages
+1,Youssef Benhaddou,media_buyer,"facebook,instagram,tiktok",available,350,senior,y.benhaddou@freelance.ma,https://portfolio.ma/youssef,ar;fr;en
+2,Amina Lahlou,media_buyer,"google_ads,seo",available,300,mid,amina.lahlou@gmail.com,,fr;ar
+3,Sofia Chraibi,copywriter,"fintech,saas,education",available,200,senior,sofia.chraibi@freelance.ma,,fr;ar;en
+4,Karim Mansouri,copywriter,"ecommerce,health",busy,180,mid,k.mansouri@freelance.ma,,ar;fr
+5,Nadia El Fassi,graphic_designer,"social_ads,branding",available,220,senior,nadia.elfassi@creative.ma,https://behance.net/nadia,fr;en
+6,Omar Benali,graphic_designer,"video,motion",available,280,senior,omar.benali@studio.ma,,ar;fr;en
+7,Fatima Zahra Idrissi,video_editor,"reels,tiktok,youtube",available,250,mid,fz.idrissi@freelance.ma,,ar;fr
+8,Mehdi Tazi,web_developer,"landing_pages,shopify",available,400,senior,mehdi.tazi@dev.ma,,fr;en
+9,Salma Berrada,data_analyst,"reporting,dashboards,ga4",available,350,mid,salma.berrada@data.ma,,fr;en
+10,Amine Qasimi,seo_specialist,"technical_seo,content",busy,300,senior,amine.qasimi@seo.ma,,ar;fr;en
+11,Houda Mernissi,community_manager,"facebook,instagram,linkedin",available,150,junior,houda.mernissi@cm.ma,,fr;ar
+12,Rachid Bensouda,media_buyer,"linkedin,google_ads",available,400,senior,r.bensouda@b2b.ma,,fr;en
+13,Zineb Alaoui,copywriter,"health,beauty,lifestyle",available,160,junior,zineb.alaoui@copy.ma,,fr;ar
+14,Yassine Hajji,video_editor,"ads,commercials",available,300,mid,yassine.hajji@video.ma,,ar;fr
+15,Khadija Rhazali,graphic_designer,"infographics,branding",busy,200,mid,k.rhazali@design.ma,,fr;ar
+16,Adil Benkirane,media_buyer,"facebook,ecommerce",available,280,mid,adil.benkirane@fb.ma,,fr;ar;en
+17,Imane Bakkali,data_analyst,"attribution,reporting",available,300,mid,imane.bakkali@analytics.ma,,fr;en
+18,Tarik Ouazzani,seo_specialist,"arabic_seo,link_building",available,250,mid,tarik.ouazzani@seo.ma,,ar;fr
+19,Sara Moussaoui,community_manager,"tiktok,instagram",available,120,junior,sara.moussaoui@cm.ma,,ar;fr
+20,Hassan Bennani,web_developer,"tracking,pixels,gtm",available,350,senior,hassan.bennani@tracking.ma,,fr;en
