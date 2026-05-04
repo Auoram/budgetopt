@@ -4,6 +4,9 @@ core/team_builder.py
 Determines which roles a campaign needs,
 matches freelancers from the database,
 and manages the campaign_team table.
+
+Phase 5 update: find_matches() now boosts freelancers
+with high past ratings and demotes those with low ratings.
 """
 import sqlite3
 import json
@@ -47,10 +50,10 @@ CHANNEL_ROLES: Dict[str, List[dict]] = {
         {"role": "community_manager", "hours": 6,  "reason": "Comment engagement and trend monitoring"},
     ],
     "email": [
-        {"role": "copywriter",    "hours": 12, "reason": "Email sequences, subject lines, body copy"},
-        {"role": "graphic_designer", "hours": 8, "reason": "Email template design"},
-        {"role": "web_developer", "hours": 4,  "reason": "Template coding, list integration, tracking"},
-        {"role": "data_analyst",  "hours": 4,  "reason": "Open rate, CTR, unsubscribe analysis"},
+        {"role": "copywriter",       "hours": 12, "reason": "Email sequences, subject lines, body copy"},
+        {"role": "graphic_designer", "hours": 8,  "reason": "Email template design"},
+        {"role": "web_developer",    "hours": 4,  "reason": "Template coding, list integration, tracking"},
+        {"role": "data_analyst",     "hours": 4,  "reason": "Open rate, CTR, unsubscribe analysis"},
     ],
     "seo": [
         {"role": "seo_specialist", "hours": 30, "reason": "Keyword research, on-page, technical SEO"},
@@ -75,18 +78,16 @@ ALWAYS_NEEDED = [
 # Extra roles triggered by complexity
 def _extra_roles(campaign: CampaignInput) -> List[dict]:
     extras = []
-    # Big budget → dedicated project manager
     if campaign.total_budget >= 500_000:
         extras.append({
-            "role": "project_manager",
-            "hours": 20,
+            "role":   "project_manager",
+            "hours":  20,
             "reason": "Campaign coordination across multiple channels and vendors",
         })
-    # Multi-country → translator
     if len(campaign.target_countries) >= 3:
         extras.append({
-            "role": "translator",
-            "hours": 10,
+            "role":   "translator",
+            "hours":  10,
             "reason": "Content localisation for multiple markets",
         })
     return extras
@@ -98,31 +99,34 @@ def _extra_roles(campaign: CampaignInput) -> List[dict]:
 
 @dataclass
 class RoleRequirement:
-    role: str
-    hours: int
-    reason: str
-    estimated_cost_mad: float = 0.0  # computed from hourly rate
+    role:                str
+    hours:               int
+    reason:              str
+    estimated_cost_mad:  float = 0.0
 
 
 @dataclass
 class FreelancerMatch:
-    freelancer_id: int
-    name: str
-    role: str
-    specialties: str
-    hourly_rate_mad: float
-    experience_level: str
-    availability: str
-    email: str
-    estimated_hours: int
-    estimated_cost_mad: float
+    freelancer_id:     int
+    name:              str
+    role:              str
+    specialties:       str
+    hourly_rate_mad:   float
+    experience_level:  str
+    availability:      str
+    email:             str
+    estimated_hours:   int
+    estimated_cost_mad:float
+    avg_rating:        Optional[float] = None   # ← Phase 5: from past campaigns
+    n_rated:           int             = 0      # ← Phase 5: number of rated campaigns
+    rating_score:      float           = 0.5    # ← Phase 5: composite score 0–1
 
 
 @dataclass
 class TeamPlan:
-    campaign_id: Optional[int]
-    required_roles: List[RoleRequirement]
-    matches: Dict[str, List[FreelancerMatch]]  # role → candidates
+    campaign_id:              Optional[int]
+    required_roles:           List[RoleRequirement]
+    matches:                  Dict[str, List[FreelancerMatch]]
     total_estimated_cost_mad: float
 
 
@@ -135,10 +139,10 @@ def init_team_tables():
     Creates the freelancers and campaign_team tables
     in feedback.db if they don't already exist.
     """
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.cursor()
 
-    # Load CSV into freelancers table on first run
     cur.execute("""
         CREATE TABLE IF NOT EXISTS freelancers (
             id                INTEGER PRIMARY KEY,
@@ -167,8 +171,8 @@ def init_team_tables():
             role           TEXT NOT NULL,
             hours          REAL DEFAULT 0,
             budget_mad     REAL DEFAULT 0,
-            status         TEXT DEFAULT 'proposed',   -- proposed|confirmed|active|done
-            rating         INTEGER,                   -- 1-5 post-campaign
+            status         TEXT DEFAULT 'proposed',
+            rating         INTEGER,
             notes          TEXT,
             assigned_at    TEXT,
             FOREIGN KEY(freelancer_id) REFERENCES freelancers(id)
@@ -185,10 +189,9 @@ def init_team_tables():
 
 def get_required_roles(campaign: CampaignInput) -> List[RoleRequirement]:
     """
-    Returns the list of roles needed for this campaign,
-    based on the selected channels and campaign properties.
-    Deduplicates — if two channels both need a media_buyer,
-    we return one entry with summed hours.
+    Returns the list of roles needed for this campaign.
+    Deduplicates across channels — if two channels both need
+    a media_buyer, returns one entry with summed hours.
     """
     role_map: Dict[str, RoleRequirement] = {}
 
@@ -202,7 +205,6 @@ def get_required_roles(campaign: CampaignInput) -> List[RoleRequirement]:
                     role=key, hours=r["hours"], reason=r["reason"]
                 )
 
-    # Always-needed
     for r in ALWAYS_NEEDED:
         key = r["role"]
         if key in role_map:
@@ -212,7 +214,6 @@ def get_required_roles(campaign: CampaignInput) -> List[RoleRequirement]:
                 role=key, hours=r["hours"], reason=r["reason"]
             )
 
-    # Extras
     for r in _extra_roles(campaign):
         key = r["role"]
         if key not in role_map:
@@ -220,10 +221,9 @@ def get_required_roles(campaign: CampaignInput) -> List[RoleRequirement]:
                 role=key, hours=r["hours"], reason=r["reason"]
             )
 
-    # Cap hours to campaign horizon
-    max_hours = campaign.horizon_months * 160  # full-time cap
+    max_hours = campaign.horizon_months * 160
     for req in role_map.values():
-        req.hours = min(req.hours, max_hours // 4)  # reasonable cap
+        req.hours = min(req.hours, max_hours // 4)
 
     return list(role_map.values())
 
@@ -243,110 +243,157 @@ def load_freelancers() -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _load_rating_scores() -> Dict[int, dict]:
+    """
+    Loads avg_rating, n_rated, and composite score
+    for every freelancer that has been rated.
+    Returns dict keyed by freelancer_id.
+    """
+    try:
+        from core.learner import get_freelancer_scores
+        scores_df = get_freelancer_scores()
+        if scores_df.empty:
+            return {}
+        result = {}
+        for _, row in scores_df.iterrows():
+            fid = int(row["freelancer_id"])
+            result[fid] = {
+                "avg_rating": float(row["avg_rating"]) if row["avg_rating"] else None,
+                "n_rated":    int(row["n_rated"]),
+                "score":      float(row["score"]),
+            }
+        return result
+    except Exception:
+        return {}
+
+
 def find_matches(
-    role: str,
+    role:     str,
     campaign: CampaignInput,
-    top_n: int = 3,
+    top_n:    int = 3,
 ) -> List[FreelancerMatch]:
     """
-    Returns up to top_n freelancers that match the given role,
-    filtered by:
-    - availability (prefer 'available')
-    - sector / channel specialty affinity (keyword match)
-    Sorted by: available first, then experience desc, then rate asc.
+    Returns up to top_n freelancers matching the given role.
+
+    Sorting priority (Phase 5 updated):
+    1. Availability (available first)
+    2. Rating score (composite from past campaigns, 0–1)
+       — freelancers with no ratings get a neutral score of 0.5
+    3. Sector / channel affinity (keyword match)
+    4. Experience level (senior > mid > junior)
+    5. Hourly rate (ascending — cheaper wins on tie)
     """
     df = load_freelancers()
     if df.empty:
         return []
 
-    matches = df[df["role"] == role].copy()
+    # Load rating scores once
+    rating_scores = _load_rating_scores()
 
+    matches = df[df["role"] == role].copy()
     if matches.empty:
-        # Fallback: broader match on specialties
         matches = df[
             df["specialties"].fillna("").str.contains(role, case=False)
         ].copy()
-
     if matches.empty:
         return []
 
-    # Score for sector / channel affinity
-    sector_kw = campaign.sector.lower()
-    channel_kw = "|".join(campaign.allowed_channels)
+    # Sector / channel affinity score
     matches["affinity"] = matches["specialties"].fillna("").apply(
-        lambda s: (sector_kw in s.lower()) + bool(
+        lambda s: (campaign.sector.lower() in s.lower()) + bool(
             any(c in s.lower() for c in campaign.allowed_channels)
         )
     )
 
-    # Sort
-    exp_order = {"senior": 0, "mid": 1, "junior": 2}
+    # Rating score — neutral 0.5 for unrated freelancers
+    matches["_rating_score"] = matches["id"].apply(
+        lambda fid: rating_scores.get(int(fid), {}).get("score", 0.5)
+    )
+
+    # Sort orders
+    exp_order   = {"senior": 0, "mid": 1, "junior": 2}
     avail_order = {"available": 0, "busy": 1}
+
     matches["_exp_ord"]   = matches["experience_level"].map(exp_order).fillna(9)
     matches["_avail_ord"] = matches["availability"].map(avail_order).fillna(9)
+
     matches = matches.sort_values(
-        ["_avail_ord", "affinity", "_exp_ord", "hourly_rate_mad"],
-        ascending=[True, False, True, True]
+        ["_avail_ord", "_rating_score", "affinity", "_exp_ord", "hourly_rate_mad"],
+        ascending=[True, False, False, True, True],
     ).head(top_n)
 
     results = []
     for _, row in matches.iterrows():
+        fid          = int(row["id"])
+        rating_info  = rating_scores.get(fid, {})
+        avg_rating   = rating_info.get("avg_rating")
+        n_rated      = rating_info.get("n_rated", 0)
+        r_score      = rating_info.get("score", 0.5)
+
         results.append(FreelancerMatch(
-            freelancer_id   = int(row["id"]),
-            name            = row["name"],
-            role            = row["role"],
-            specialties     = row.get("specialties", ""),
-            hourly_rate_mad = float(row["hourly_rate_mad"]),
-            experience_level= row.get("experience_level", "mid"),
-            availability    = row.get("availability", "available"),
-            email           = row.get("email", ""),
-            estimated_hours = 0,  # filled in by caller
-            estimated_cost_mad = 0.0,
+            freelancer_id     = fid,
+            name              = row["name"],
+            role              = row["role"],
+            specialties       = row.get("specialties", ""),
+            hourly_rate_mad   = float(row["hourly_rate_mad"]),
+            experience_level  = row.get("experience_level", "mid"),
+            availability      = row.get("availability", "available"),
+            email             = row.get("email", ""),
+            estimated_hours   = 0,
+            estimated_cost_mad= 0.0,
+            avg_rating        = avg_rating,
+            n_rated           = n_rated,
+            rating_score      = r_score,
         ))
     return results
 
 
-def build_team_plan(campaign: CampaignInput, campaign_id: Optional[int] = None) -> TeamPlan:
+def build_team_plan(
+    campaign:    CampaignInput,
+    campaign_id: Optional[int] = None,
+) -> TeamPlan:
     """
     Main entry point.
     Returns a TeamPlan with required roles + candidate freelancers per role.
     """
-    roles = get_required_roles(campaign)
+    roles   = get_required_roles(campaign)
     matches: Dict[str, List[FreelancerMatch]] = {}
     total_cost = 0.0
 
     for req in roles:
         candidates = find_matches(req.role, campaign)
         for c in candidates:
-            c.estimated_hours     = req.hours
-            c.estimated_cost_mad  = req.hours * c.hourly_rate_mad
+            c.estimated_hours      = req.hours
+            c.estimated_cost_mad   = req.hours * c.hourly_rate_mad
         if candidates:
-            total_cost += candidates[0].estimated_cost_mad  # use top candidate
+            total_cost += candidates[0].estimated_cost_mad
         req.estimated_cost_mad = (
             candidates[0].estimated_cost_mad if candidates else 0.0
         )
         matches[req.role] = candidates
 
     return TeamPlan(
-        campaign_id=campaign_id,
-        required_roles=roles,
-        matches=matches,
-        total_estimated_cost_mad=total_cost,
+        campaign_id              = campaign_id,
+        required_roles           = roles,
+        matches                  = matches,
+        total_estimated_cost_mad = total_cost,
     )
 
 
 def save_team_assignment(
     campaign_id: int,
-    assignments: List[dict],  # [{"freelancer_id": x, "role": ..., "hours": ..., "budget": ...}]
+    assignments: List[dict],
 ) -> int:
-    """Saves the chosen freelancers to campaign_team. Returns count inserted."""
+    """Saves chosen freelancers to campaign_team. Returns count inserted."""
     from datetime import datetime
     init_team_tables()
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.cursor()
 
-    # Remove any previous proposals for this campaign
-    cur.execute("DELETE FROM campaign_team WHERE campaign_id=? AND status='proposed'", (campaign_id,))
+    cur.execute(
+        "DELETE FROM campaign_team WHERE campaign_id=? AND status='proposed'",
+        (campaign_id,)
+    )
 
     for a in assignments:
         cur.execute("""
@@ -386,14 +433,14 @@ def get_campaign_team(campaign_id: int) -> pd.DataFrame:
 
 
 ROLE_LABELS = {
-    "media_buyer":        "📣 Media Buyer",
-    "copywriter":         "✍️ Copywriter",
-    "graphic_designer":   "🎨 Graphic Designer",
-    "video_editor":       "🎬 Video Editor",
-    "web_developer":      "💻 Web Developer",
-    "data_analyst":       "📊 Data Analyst",
-    "seo_specialist":     "🌱 SEO Specialist",
-    "community_manager":  "💬 Community Manager",
-    "project_manager":    "📋 Project Manager",
-    "translator":         "🌍 Translator",
+    "media_buyer":       "📣 Media Buyer",
+    "copywriter":        "✍️ Copywriter",
+    "graphic_designer":  "🎨 Graphic Designer",
+    "video_editor":      "🎬 Video Editor",
+    "web_developer":     "💻 Web Developer",
+    "data_analyst":      "📊 Data Analyst",
+    "seo_specialist":    "🌱 SEO Specialist",
+    "community_manager": "💬 Community Manager",
+    "project_manager":   "📋 Project Manager",
+    "translator":        "🌍 Translator",
 }

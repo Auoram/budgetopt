@@ -28,16 +28,18 @@ from core.startup import (
     ensure_model_exists,
     ensure_team_tables_exist,
     ensure_task_tables_exist,
+    ensure_performance_tables_exist,
 )
 from core.feedback import init_db, save_feedback, get_feedback_count
 from core.campaign_store import init_campaign_store, save_campaign_run
 
 # ── Startup checks ────────────────────────────────────────
-ensure_model_exists()          # generates ML model if missing
-ensure_team_tables_exist()     # creates freelancers + campaign_team tables
-ensure_task_tables_exist()     # creates campaign_tasks table
-init_db()                      # creates feedback table
-init_campaign_store()          # creates campaign_runs table
+ensure_model_exists()               # generates ML model if missing
+ensure_team_tables_exist()          # creates freelancers + campaign_team tables
+ensure_task_tables_exist()          # creates campaign_tasks table
+ensure_performance_tables_exist()   # creates campaign_performance table
+init_db()                           # creates feedback table
+init_campaign_store()               # creates campaigns table
 
 st.set_page_config(
     page_title            = "BudgetOpt — Campaign Allocator",
@@ -579,7 +581,6 @@ with col_results:
 
         with tab_table:
 
-            # Allocation table
             table_data = []
             for ch in sorted(
                 result.pct_per_channel,
@@ -626,7 +627,6 @@ with col_results:
                         for ch in sorted_chs
                     ],
                 })
-
                 meta = pd.DataFrame({
                     "Channel":             ["", "TOTAL"],
                     "Budget_MAD":          ["", int(campaign.total_budget)],
@@ -634,13 +634,11 @@ with col_results:
                     "Expected_leads":      ["", int(result.total_leads)],
                     "Expected_revenue_MAD":["", int(result.total_revenue)],
                 })
-
                 full_export = pd.concat(
                     [export_df, meta], ignore_index=True
                 )
                 csv_buffer = io.StringIO()
                 full_export.to_csv(csv_buffer, index=False)
-
                 st.download_button(
                     label     = "⬇ Download CSV",
                     data      = csv_buffer.getvalue(),
@@ -679,7 +677,6 @@ with col_results:
                 expl   = result.explanations[ch]
                 pct    = result.pct_per_channel[ch]
                 budget = int(result.budget_per_channel[ch])
-
                 with st.expander(
                     f"{channel_label(ch)} — "
                     f"{pct:.1f}% · {budget:,} MAD"
@@ -699,13 +696,11 @@ with col_results:
                     pie_budget_split(result),
                     use_container_width = True,
                 )
-
             with ct2:
                 st.plotly_chart(
                     bar_expected_leads(result),
                     use_container_width = True,
                 )
-
             with ct3:
                 with st.spinner("Computing budget sensitivity..."):
                     fig_line = line_budget_sensitivity(campaign)
@@ -816,7 +811,6 @@ with col_results:
 
                 st.divider()
 
-                # Comparison: recommended vs actual
                 st.markdown("**Recommended vs actual (preview)**")
                 comparison_rows = []
                 for ch in campaign.allowed_channels:

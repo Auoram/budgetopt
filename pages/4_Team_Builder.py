@@ -41,7 +41,8 @@ from core.team_db import (
     rate_team_member,
     remove_team_member,
 )
-from core.feedback import init_db, get_all_feedback
+from core.campaign_store import get_all_campaigns
+from core.feedback import init_db  
 from core.startup import ensure_model_exists
 
 # ── Startup ───────────────────────────────────────────────
@@ -99,7 +100,7 @@ with tab_assign:
     # ── Helper: load past campaigns from feedback.db ──────
     @st.cache_data(ttl=60)
     def load_past_campaigns():
-        records = get_all_feedback()
+        records = get_all_campaigns()
         if not records:
             return []
         return [
@@ -107,8 +108,8 @@ with tab_assign:
                 "label": (
                     f"#{r['id']} · {r['company_name']} · "
                     f"{r['sector'].title()} · "
-                    f"{r['total_budget']:,.0f} MAD · "
-                    f"{r['submitted_at'][:10]}"
+                    f"{float(r['total_budget']):,.0f} MAD · "
+                    f"{r['run_at'][:10]}"
                 ),
                 "id":            r["id"],
                 "company_name":  r["company_name"],

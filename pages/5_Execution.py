@@ -36,7 +36,8 @@ from core.task_db import (
     tasks_by_category,
     overdue_tasks,
 )
-from core.feedback import init_db, get_all_feedback
+from core.campaign_store import get_all_campaigns
+from core.feedback import init_db  
 from core.startup import ensure_model_exists, ensure_team_tables_exist
 
 # ── Startup ────────────────────────────────────────────────
@@ -90,7 +91,7 @@ st.markdown(
 # ─────────────────────────────────────────
 @st.cache_data(ttl=60)
 def load_past_campaigns():
-    records = get_all_feedback()
+    records = get_all_campaigns()
     if not records:
         return []
     return [
@@ -98,7 +99,7 @@ def load_past_campaigns():
             "label": (
                 f"#{r['id']} · {r['company_name']} · "
                 f"{r['sector'].title()} · "
-                f"{r['total_budget']:,.0f} MAD"
+                f"{float(r['total_budget']):,.0f} MAD"
             ),
             "id":                 r["id"],
             "company_name":       r["company_name"],
