@@ -22,6 +22,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.data_model import CampaignInput, CHANNELS, SECTORS
 from core.team_builder import (
     build_team_plan,
@@ -59,6 +65,9 @@ st.set_page_config(
     layout      = "wide",
     initial_sidebar_state = "collapsed",
 )
+
+with st.sidebar:
+    show_user_sidebar()
 
 st.markdown("""
 <style>

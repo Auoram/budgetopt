@@ -6,6 +6,12 @@ import json
 import streamlit as st
 import pandas as pd
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.campaign_store import (
     init_campaign_store,
     get_all_campaigns,
@@ -31,6 +37,10 @@ st.set_page_config(
     page_icon  = "🗂️",
     layout     = "wide",
 )
+
+# ── Sidebar user info ─────────────────────────────────────
+with st.sidebar:
+    show_user_sidebar()
 
 st.markdown("""
 <style>
@@ -88,17 +98,17 @@ def row_to_result(row: dict) -> AllocationResult:
 def row_to_campaign(row: dict) -> CampaignInput:
     """Reconstructs a CampaignInput from a DB row."""
     return CampaignInput(
-        company_name        = row["company_name"]     or "Unknown",
-        sector              = row["sector"]           or "ecommerce",
+        company_name        = row["company_name"]        or "Unknown",
+        sector              = row["sector"]              or "ecommerce",
         target_countries    = parse_json(row["target_countries"], ["Morocco"]),
-        client_type         = row["client_type"]      or "b2c",
-        age_min             = row["age_min"]          or 18,
-        age_max             = row["age_max"]          or 45,
-        audience_type       = row["audience_type"]    or "professionals",
-        goal                = row["goal"]             or "generate_leads",
-        horizon_months      = row["horizon_months"]   or 3,
-        priority            = row["priority"]         or "high_quality",
-        total_budget        = row["total_budget"]     or 0,
+        client_type         = row["client_type"]         or "b2c",
+        age_min             = row["age_min"]             or 18,
+        age_max             = row["age_max"]             or 45,
+        audience_type       = row["audience_type"]       or "professionals",
+        goal                = row["goal"]                or "generate_leads",
+        horizon_months      = row["horizon_months"]      or 3,
+        priority            = row["priority"]            or "high_quality",
+        total_budget        = row["total_budget"]        or 0,
         allowed_channels    = parse_json(row["allowed_channels"], []),
         max_pct_per_channel = row["max_pct_per_channel"] or 0.5,
     )
@@ -162,17 +172,17 @@ col_list, col_detail = st.columns([1, 2], gap="large")
 with col_list:
 
     search = st.text_input(
-        label       = "🔍 Search",
-        placeholder = "Company name, sector, country...",
+        label            = "🔍 Search",
+        placeholder      = "Company name, sector, country...",
         label_visibility = "collapsed",
     )
 
     # Filter buttons
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
-        show_form = st.toggle("📋 Form", value=True)
+        show_form    = st.toggle("📋 Form",        value=True)
     with f_col2:
-        show_chat = st.toggle("🤖 Chat", value=True)
+        show_chat    = st.toggle("🤖 Chat",        value=True)
     with f_col3:
         show_pending = st.toggle("⏳ No feedback", value=False)
 
@@ -211,11 +221,11 @@ with col_list:
 
             if st.button(
                 f"{label}\n{date_str} · {budget}",
-                key              = f"camp_{c['id']}",
+                key                 = f"camp_{c['id']}",
                 use_container_width = True,
-                type             = "primary" if is_selected else "secondary",
+                type                = "primary" if is_selected else "secondary",
             ):
-                st.session_state.selected_id  = c["id"]
+                st.session_state.selected_id   = c["id"]
                 st.session_state.feedback_saved = False
                 st.rerun()
 
@@ -261,13 +271,13 @@ with col_detail:
     with d3:
         st.metric("Horizon",  f"{row['horizon_months']} months")
     with d4:
-        st.metric("Priority", row["priority"].replace("_"," ").title())
+        st.metric("Priority", row["priority"].replace("_", " ").title())
 
     st.caption(
         f"**Countries:** {', '.join(countries)} · "
         f"**Client:** {row['client_type'].upper()} · "
-        f"**Goal:** {row['goal'].replace('_',' ').title()} · "
-        f"**Audience:** {(row['audience_type'] or 'N/A').replace('_',' ').title()}"
+        f"**Goal:** {row['goal'].replace('_', ' ').title()} · "
+        f"**Audience:** {(row['audience_type'] or 'N/A').replace('_', ' ').title()}"
     )
 
     st.divider()
@@ -319,12 +329,12 @@ with col_detail:
         with c1:
             st.plotly_chart(
                 pie_budget_split(result),
-                use_container_width=True,
+                use_container_width = True,
             )
         with c2:
             st.plotly_chart(
                 bar_expected_leads(result),
-                use_container_width=True,
+                use_container_width = True,
             )
 
     with tab_dl:
@@ -367,17 +377,65 @@ with col_detail:
 
     st.divider()
 
+    # ── Quick actions ─────────────────────────────────────
+    st.markdown("### 🔗 Continue with this campaign")
+    qa1, qa2, qa3 = st.columns(3)
+    with qa1:
+        st.link_button(
+            "👥 Assign team",
+            url                 = "4_Team_Builder",
+            use_container_width = True,
+        )
+    with qa2:
+        st.link_button(
+            "🚀 Manage tasks",
+            url                 = "5_Execution",
+            use_container_width = True,
+        )
+    with qa3:
+        st.link_button(
+            "📈 Monitor & re-optimize",
+            url                 = "6_Monitoring",
+            use_container_width = True,
+        )
+    st.caption(
+        f"Campaign ID: **#{row['id']}** — "
+        "select this campaign on the destination page."
+    )
+
+    st.divider()
+
     # ── Feedback section ─────────────────────────────────
     st.markdown("### 📋 Post-campaign feedback")
 
-    if row["feedback_submitted"]:
+    # FIXED — also check the old feedback table
+    def already_submitted(campaign_id: int, company_name: str) -> bool:
+        """Returns True if feedback exists in either table."""
+        if row["feedback_submitted"]:
+            return True
+        # Cross-check old feedback table
+        import sqlite3
+        from pathlib import Path
+        db = Path(__file__).parent.parent / "data" / "feedback.db"
+        try:
+            conn = sqlite3.connect(db)
+            result = conn.execute(
+                "SELECT COUNT(*) FROM feedback WHERE company_name = ?",
+                (company_name,)
+            ).fetchone()
+            conn.close()
+            return result[0] > 0
+        except Exception:
+            return False
+
+    if already_submitted(row["id"], row["company_name"]):
         # Show existing feedback
         st.success("Feedback already submitted for this campaign.")
 
         actual_spend  = parse_json(row["actual_spend"],  {})
         actual_leads  = parse_json(row["actual_leads"],  {})
         actual_rev    = row["actual_revenue"] or 0
-        comments      = row["comments"] or ""
+        comments      = row["comments"]       or ""
         feedback_date = format_date(row["feedback_at"]) if row["feedback_at"] else "—"
 
         st.caption(f"Submitted on {feedback_date}")
@@ -426,9 +484,13 @@ with col_detail:
 
     else:
         # Feedback form
+        st.info(
+            "💡 For detailed channel-by-channel performance tracking "
+            "and budget re-optimization, use the **📈 Monitoring** "
+            "page via the quick actions above."
+        )
         st.markdown(
-            "After your campaign ends, enter your actual results below. "
-            "This helps improve future predictions."
+            "Or submit a quick summary of actual results below:"
         )
 
         allowed_chs = parse_json(row["allowed_channels"], [])
@@ -488,8 +550,8 @@ with col_detail:
 
             submitted = st.form_submit_button(
                 "Submit feedback →",
-                type               = "primary",
-                use_container_width= True,
+                type                = "primary",
+                use_container_width = True,
             )
 
         if submitted:

@@ -6,8 +6,19 @@ import io
 import streamlit as st
 import pandas as pd
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.data_model import CampaignInput
-from core.startup import ensure_model_exists
+from core.startup import (
+    ensure_model_exists,
+    ensure_team_tables_exist,
+    ensure_task_tables_exist,
+    ensure_performance_tables_exist,
+)
 from core.feedback import init_db
 from core.charts import channel_label
 from core.pdf_export import generate_pdf
@@ -28,17 +39,20 @@ from core.campaign_store import init_campaign_store, save_campaign_run
 
 setup_langsmith()
 ensure_model_exists()
+ensure_team_tables_exist()
+ensure_task_tables_exist()
+ensure_performance_tables_exist()
 init_db()
-init_campaign_store() 
+init_campaign_store()
 
 # ─────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────
 
 st.set_page_config(
-    page_title = "BudgetOpt — AI Chat",
-    page_icon  = "🤖",
-    layout     = "wide",
+    page_title            = "BudgetOpt — AI Chat",
+    page_icon             = "🤖",
+    layout                = "wide",
     initial_sidebar_state = "collapsed",
 )
 
@@ -67,10 +81,6 @@ def init_session_state():
         st.session_state.conv_state = ConversationState()
     if "agent" not in st.session_state:
         st.session_state.agent = BudgetAgent()
-    if "show_feedback" not in st.session_state:
-        st.session_state.show_feedback = False
-    if "feedback_submitted" not in st.session_state:
-        st.session_state.feedback_submitted = False
 
 init_session_state()
 
@@ -80,9 +90,7 @@ init_session_state()
 # ─────────────────────────────────────────
 
 def reset_conversation():
-    st.session_state.conv_state         = ConversationState()
-    st.session_state.show_feedback      = False
-    st.session_state.feedback_submitted = False
+    st.session_state.conv_state = ConversationState()
 
 
 def render_allocation_table(result, campaign):
@@ -174,91 +182,15 @@ def render_allocation_table(result, campaign):
         except Exception as e:
             st.warning(f"PDF generation failed: {e}")
 
-
-def render_feedback_form(campaign: CampaignInput, result):
-    """Post-campaign feedback form rendered below the chat."""
-    from core.feedback import save_feedback, get_feedback_count
-
-    if st.session_state.feedback_submitted:
-        st.success(
-            "Thank you — your feedback has been saved and will "
-            "improve future recommendations."
-        )
-        st.caption(f"Total feedback records: {get_feedback_count()}")
-        return
-
-    with st.expander("📋 Submit post-campaign results (optional)"):
-        st.markdown(
-            "After your campaign ends, submit your actual results. "
-            "This helps retrain the model for better predictions."
-        )
-
-        st.markdown("**Actual spend per channel (MAD)**")
-        actual_spend = {}
-        for ch in campaign.allowed_channels:
-            rec = int(result.budget_per_channel.get(ch, 0))
-            actual_spend[ch] = st.number_input(
-                label     = f"{channel_label(ch)} (recommended: {rec:,} MAD)",
-                min_value = 0.0,
-                max_value = float(campaign.total_budget),
-                value     = float(rec),
-                step      = 1_000.0,
-                format    = "%0.0f",
-                key       = f"fb_spend_{ch}",
-            )
-
-        st.divider()
-        st.markdown("**Actual leads per channel**")
-        actual_leads = {}
-        for ch in campaign.allowed_channels:
-            rec_leads = int(result.expected_leads.get(ch, 0))
-            actual_leads[ch] = int(st.number_input(
-                label     = f"{channel_label(ch)} (expected: {rec_leads:,})",
-                min_value = 0,
-                max_value = 10_000_000,
-                value     = rec_leads,
-                step      = 10,
-                key       = f"fb_leads_{ch}",
-            ))
-
-        st.divider()
-        actual_revenue = st.number_input(
-            label     = "Total actual revenue (MAD)",
-            min_value = 0.0,
-            value     = float(int(result.total_revenue)),
-            step      = 1_000.0,
-            format    = "%0.0f",
-            key       = "fb_revenue",
-        )
-        comments = st.text_area(
-            label       = "Comments (optional)",
-            placeholder = (
-                "e.g. Facebook underperformed due to Ramadan. "
-                "TikTok exceeded expectations for 18-25 segment."
-            ),
-            height = 80,
-            key    = "fb_comments",
-        )
-
-        if st.button(
-            "Submit feedback →",
-            type                = "primary",
-            use_container_width = True,
-            key                 = "fb_submit",
-        ):
-            try:
-                save_feedback(
-                    campaign       = campaign,
-                    result         = result,
-                    actual_spend   = actual_spend,
-                    actual_leads   = actual_leads,
-                    actual_revenue = actual_revenue,
-                    comments       = comments,
-                )
-                st.session_state.feedback_submitted = True
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to save feedback: {e}")
+    # ── Post-campaign redirect notice ─────────────────────
+    st.divider()
+    st.info(
+        "📋 **Campaign saved automatically.** "
+        "To submit post-campaign feedback, go to "
+        "**🗂️ Campaign History** in the sidebar. "
+        "To track performance and re-optimize, go to "
+        "**📈 Monitoring**."
+    )
 
 
 # ─────────────────────────────────────────
@@ -351,22 +283,12 @@ if user_input:
 
 
 # ─────────────────────────────────────────
-# FEEDBACK FORM
-# ─────────────────────────────────────────
-
-if (
-    state.last_result is not None
-    and state.last_campaign is not None
-):
-    st.divider()
-    render_feedback_form(state.last_campaign, state.last_result)
-
-
-# ─────────────────────────────────────────
 # SIDEBAR — debug + LangSmith status
 # ─────────────────────────────────────────
 
 with st.sidebar:
+    show_user_sidebar()
+    st.divider()
     st.markdown("### 🛠 Debug info")
 
     # ── LangSmith status ──────────────────

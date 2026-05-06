@@ -10,7 +10,7 @@ IMPORTANT RULES:
 3. If channels are not mentioned, set allowed_channels to [].
 4. Convert all currencies to MAD: 1 USD=10 MAD, 1 EUR=11 MAD.
 5. Channel names must be exactly one of:
-   facebook, instagram, google_ads, email, seo, tiktok
+   facebook, instagram, google_ads, email, seo, tiktok, linkedin
 6. Sector must be exactly one of:
    fintech, ecommerce, saas, education, health
 7. Country names must match exactly:

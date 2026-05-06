@@ -18,6 +18,12 @@ import pandas as pd
 from datetime import date, timedelta
 import json
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.data_model import CampaignInput, CHANNELS
 from core.task_generator import (
     generate_tasks,
@@ -55,6 +61,9 @@ st.set_page_config(
     layout                = "wide",
     initial_sidebar_state = "collapsed",
 )
+
+with st.sidebar:
+    show_user_sidebar()
 
 st.markdown("""
 <style>

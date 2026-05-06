@@ -58,3 +58,14 @@ def ensure_performance_tables_exist():
     """
     from core.performance_db import init_performance_tables
     init_performance_tables()
+
+def ensure_auth_tables_exist():
+    """
+    Creates the users table and seeds default credentials
+    on first run:
+        admin    / admin123
+        employee / employee123
+    Change these immediately after first login.
+    """
+    from core.auth import init_auth_tables
+    init_auth_tables()

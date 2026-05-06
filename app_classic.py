@@ -6,6 +6,12 @@ import io
 import streamlit as st
 import pandas as pd
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+ 
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.data_model import (
     SECTORS, COUNTRIES, CHANNELS, GOALS,
     PRIORITIES, AUDIENCE_TYPES,
@@ -20,26 +26,22 @@ from core.charts import (
     channel_label,
 )
 from core.pdf_export import generate_pdf
-from core.feedback import (
-    init_db, save_feedback,
-    get_feedback_count, retrain_with_feedback,
-)
+from core.feedback import init_db
 from core.startup import (
     ensure_model_exists,
     ensure_team_tables_exist,
     ensure_task_tables_exist,
     ensure_performance_tables_exist,
 )
-from core.feedback import init_db, save_feedback, get_feedback_count
 from core.campaign_store import init_campaign_store, save_campaign_run
 
 # ── Startup checks ────────────────────────────────────────
-ensure_model_exists()               # generates ML model if missing
-ensure_team_tables_exist()          # creates freelancers + campaign_team tables
-ensure_task_tables_exist()          # creates campaign_tasks table
-ensure_performance_tables_exist()   # creates campaign_performance table
-init_db()                           # creates feedback table
-init_campaign_store()               # creates campaigns table
+ensure_model_exists()
+ensure_team_tables_exist()
+ensure_task_tables_exist()
+ensure_performance_tables_exist()
+init_db()
+init_campaign_store()
 
 st.set_page_config(
     page_title            = "BudgetOpt — Campaign Allocator",
@@ -47,6 +49,10 @@ st.set_page_config(
     layout                = "wide",
     initial_sidebar_state = "collapsed",
 )
+
+# ── Sidebar user info ─────────────────────────────────────
+with st.sidebar:
+    show_user_sidebar()
 
 st.markdown("""
 <style>
@@ -98,12 +104,6 @@ def init_session_state():
         "result":              None,
         "campaign":            None,
         "form_submitted":      False,
-        # Feedback form state
-        "feedback_submitted":      False,
-        "feedback_actual_spend":   {},
-        "feedback_actual_leads":   {},
-        "feedback_actual_revenue": 0.0,
-        "feedback_comments":       "",
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -349,6 +349,7 @@ with col_form:
             "email":      "📧 Email Marketing",
             "seo":        "🌱 SEO / Content",
             "tiktok":     "🎵 TikTok Ads",
+            "linkedin":   "💼 LinkedIn Ads",
         }.get(x, x),
         help = "Only selected channels will receive budget.",
         key  = "allowed_channels",
@@ -721,146 +722,11 @@ with col_results:
 
         st.divider()
 
-        # ── Feedback form ─────────────────────────────────
-        st.markdown(
-            '<div class="section-header">'
-            'Campaign Feedback (optional)</div>',
-            unsafe_allow_html=True,
+        # ── Post-campaign redirect notice ─────────────────
+        st.info(
+            "📋 **Campaign saved automatically.** "
+            "To submit post-campaign feedback, go to "
+            "**🗂️ Campaign History** in the sidebar. "
+            "To track performance and re-optimize, go to "
+            "**📈 Monitoring**."
         )
-        st.markdown(
-            "After your campaign ends, submit your actual results here. "
-            "This improves the model's predictions for future campaigns."
-        )
-
-        if st.session_state["feedback_submitted"]:
-            st.success(
-                "Thank you — your feedback has been saved and will be "
-                "used to improve future recommendations."
-            )
-            n = get_feedback_count()
-            st.caption(f"Total feedback records in database: {n}")
-
-        else:
-            with st.expander("Submit post-campaign results"):
-
-                st.markdown("**Actual spend per channel (MAD)**")
-                st.caption(
-                    "Enter how much you actually spent on each channel. "
-                    "Leave at 0 if you did not use that channel."
-                )
-
-                actual_spend = {}
-                for ch in campaign.allowed_channels:
-                    recommended = int(
-                        result.budget_per_channel.get(ch, 0)
-                    )
-                    actual_spend[ch] = st.number_input(
-                        label     = (
-                            f"{ch.replace('_',' ').title()} "
-                            f"(recommended: {recommended:,} MAD)"
-                        ),
-                        min_value = 0.0,
-                        max_value = float(campaign.total_budget),
-                        value     = float(recommended),
-                        step      = 1_000.0,
-                        format    = "%0.0f",
-                        key       = f"spend_{ch}",
-                    )
-
-                st.divider()
-
-                st.markdown("**Actual leads received per channel**")
-                actual_leads = {}
-                for ch in campaign.allowed_channels:
-                    recommended_leads = int(
-                        result.expected_leads.get(ch, 0)
-                    )
-                    actual_leads[ch] = int(st.number_input(
-                        label     = (
-                            f"{ch.replace('_',' ').title()} "
-                            f"(expected: {recommended_leads:,})"
-                        ),
-                        min_value = 0,
-                        max_value = 10_000_000,
-                        value     = recommended_leads,
-                        step      = 10,
-                        key       = f"leads_{ch}",
-                    ))
-
-                st.divider()
-
-                actual_revenue = st.number_input(
-                    label     = "Total actual revenue (MAD)",
-                    min_value = 0.0,
-                    value     = float(int(result.total_revenue)),
-                    step      = 1_000.0,
-                    format    = "%0.0f",
-                    help      = "Total revenue generated by this campaign.",
-                    key       = "feedback_revenue",
-                )
-
-                comments = st.text_area(
-                    label       = "Comments (optional)",
-                    placeholder = (
-                        "e.g. Facebook underperformed due to Ramadan period. "
-                        "TikTok exceeded expectations for the 18-25 segment."
-                    ),
-                    height = 100,
-                    key    = "feedback_comments_input",
-                )
-
-                st.divider()
-
-                st.markdown("**Recommended vs actual (preview)**")
-                comparison_rows = []
-                for ch in campaign.allowed_channels:
-                    rec_spend  = int(result.budget_per_channel.get(ch, 0))
-                    rec_leads  = int(result.expected_leads.get(ch, 0))
-                    act_spend  = int(actual_spend.get(ch, 0))
-                    act_leads  = actual_leads.get(ch, 0)
-                    lead_diff  = act_leads - rec_leads
-                    diff_str   = (
-                        f"+{lead_diff}" if lead_diff >= 0
-                        else str(lead_diff)
-                    )
-                    comparison_rows.append({
-                        "Channel":    ch.replace("_"," ").title(),
-                        "Rec. spend": f"{rec_spend:,}",
-                        "Act. spend": f"{act_spend:,}",
-                        "Rec. leads": f"{rec_leads:,}",
-                        "Act. leads": f"{act_leads:,}",
-                        "Leads diff": diff_str,
-                    })
-
-                st.dataframe(
-                    pd.DataFrame(comparison_rows),
-                    hide_index          = True,
-                    use_container_width = True,
-                )
-
-                st.divider()
-
-                submit_feedback = st.button(
-                    label               = "Submit feedback →",
-                    type                = "primary",
-                    use_container_width = True,
-                    key                 = "submit_feedback_btn",
-                )
-
-                if submit_feedback:
-                    try:
-                        save_feedback(
-                            campaign       = campaign,
-                            result         = result,
-                            actual_spend   = actual_spend,
-                            actual_leads   = actual_leads,
-                            actual_revenue = actual_revenue,
-                            comments       = comments,
-                        )
-                        st.session_state["feedback_submitted"] = True
-                        st.rerun()
-
-                    except Exception as e:
-                        st.error(f"Failed to save feedback: {e}")
-                        import traceback
-                        st.code(traceback.format_exc())

@@ -21,6 +21,7 @@ CHANNELS = [
     "email",
     "seo",
     "tiktok",
+    "linkedin",
 ]
 
 GOALS = [

@@ -16,6 +16,12 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.auth import require_login
+from core.auth_ui import show_user_sidebar
+
+# ── Auth guard — must be first ────────────────────────────
+require_login()
+
 from core.learner import (
     export_performance_for_retraining,
     count_retraining_rows,

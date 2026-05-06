@@ -159,8 +159,9 @@ class ExtractedCampaign(BaseModel):
             "Map: 'social media/social'→"
             "['facebook','instagram','tiktok'], "
             "'search'→['google_ads'], "
+            "'professional/b2b'→['linkedin','google_ads'], "
             "'all channels/everything'→"
-            "['facebook','instagram','google_ads','email','seo','tiktok']. "
+            "['facebook','instagram','google_ads','email','seo','tiktok','linkedin']. "
             "If channels not mentioned, return empty list []."
         ),
     )
