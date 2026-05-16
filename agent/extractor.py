@@ -304,6 +304,17 @@ class ExtractedCampaign(BaseModel):
 # EXTRACTION CHAIN
 # ─────────────────────────────────────────
 
+# Words that look like names but are generic descriptors —
+# we never want to use these as a company name.
+_GENERIC_WORDS = {
+    "a", "an", "the", "my", "our", "your", "their", "this", "that",
+    "one", "some", "any", "new", "old", "big", "small", "best", "good",
+    "app", "brand", "store", "shop", "product", "service", "company",
+    "campaign", "budget", "fintech", "ecommerce", "saas", "education",
+    "health", "project", "business", "startup", "platform", "website",
+}
+
+
 class CampaignExtractor:
     """
     Extracts structured campaign parameters
@@ -358,12 +369,49 @@ class CampaignExtractor:
                 return "high_volume"
         return priority
 
-    # ── @traceable wraps this method so every call appears
-    # ── as a named run in the LangSmith dashboard with:
-    # ──   inputs:  the user message
-    # ──   outputs: status + raw_json + error
-    # ── This is all we need — LangChain auto-traces the
-    # ── ChatOllama call inside it as a child span.
+    def _correct_company_name(
+        self, name: str, user_message: str
+    ) -> str:
+        """
+        Fallback: if the LLM returned 'Unknown', try to extract
+        a company or product name from the raw message using regex.
+
+        Patterns tried in order:
+          1. "for <Name>,"        e.g. "I have 1M MAD for Cosmetics Morocco,"
+          2. "for <Name>."        e.g. "campaign for AtlasFinance."
+          3. "<Name> needs"       e.g. "AtlasFinance needs a campaign"
+          4. "called <Name>"      e.g. "an app called HealthPlus"
+          5. "named <Name>"       e.g. "a platform named LearnDarija"
+          6. "campaign for <Name>"
+          7. First capitalised multi-word proper noun in message
+
+        A candidate is rejected if its first word is in _GENERIC_WORDS.
+        """
+        if name.strip().lower() not in ("unknown", "", "unknown."):
+            return name  # LLM already found a name — keep it
+
+        patterns = [
+            # "for <Name>," or "for <Name>."
+            r'\bfor\s+([A-Z][A-Za-z0-9](?:[A-Za-z0-9\s]{0,30}?)?)(?:,|\.)',
+            # "<Name> needs"
+            r'^([A-Z][A-Za-z0-9](?:[A-Za-z0-9\s]{0,30}?))\s+needs\b',
+            # "called <Name>" or "named <Name>"
+            r'\b(?:called|named)\s+([A-Z][A-Za-z0-9](?:[A-Za-z0-9\s]{0,30}?))(?:,|\.|$)',
+            # "campaign for <Name>"
+            r'\bcampaign\s+for\s+([A-Z][A-Za-z0-9](?:[A-Za-z0-9\s]{0,30}?))(?:,|\.|$)',
+            # standalone CamelCase / multi-capital word (e.g. "HealthPlus")
+            r'\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b',
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, user_message)
+            if match:
+                candidate = match.group(1).strip()
+                first_word = candidate.lower().split()[0]
+                if first_word not in _GENERIC_WORDS and len(candidate) >= 2:
+                    return candidate
+
+        return name  # nothing found — keep Unknown
 
     @traceable(name="extract_campaign", run_type="chain")
     def extract(self, user_message: str) -> dict:
@@ -417,11 +465,21 @@ class CampaignExtractor:
                     "error":          None,
                 }
 
-            corrected = self._correct_priority(
+            # ── Priority correction ──────────────────────
+            corrected_priority = self._correct_priority(
                 extracted.priority, user_message
             )
-            if corrected != extracted.priority:
-                extracted.priority = corrected
+            if corrected_priority != extracted.priority:
+                extracted.priority = corrected_priority
+
+            # ── Company name fallback ────────────────────
+            # If the LLM returned Unknown, try regex before
+            # giving up and asking the user.
+            corrected_name = self._correct_company_name(
+                extracted.company_name, user_message
+            )
+            if corrected_name != extracted.company_name:
+                extracted.company_name = corrected_name
 
             campaign = extracted.to_campaign_input()
 

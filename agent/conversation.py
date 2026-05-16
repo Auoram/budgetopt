@@ -81,6 +81,10 @@ def get_clarification_question(missing_field: str) -> str:
             "- 🎵 **TikTok Ads**\n\n"
             "You can say *'all channels'* or list specific ones."
         ),
+        "company_name": (
+            "What is the **name of your company or product**? "
+            "This will be used to label your campaign in the history."
+        ),
     }
     return questions.get(
         missing_field,
@@ -161,6 +165,16 @@ class BudgetAgent:
         Combines original context + new answer and re-extracts.
         """
         state.clarification_count += 1
+  
+        # ── ADD THIS: company name doesn't need re-extraction ──
+        if state.waiting_for == "company_name":
+            state.waiting_for = None
+            # Patch the company name directly into the already-extracted campaign
+            extraction = state.last_extraction
+            if extraction and extraction.get("campaign"):
+                extraction["campaign"].company_name = user_answer.strip()
+                state.last_extraction = extraction
+            return self._route_extraction(extraction, state)
 
         state.accumulated_context = (
             f"{state.original_message} "
@@ -217,9 +231,17 @@ class BudgetAgent:
             )
             state.add_assistant_message(response)
             return response, state
-
-        # ── Success — run pipeline then explain ──
+        
+        # ── Success — check company name before running pipeline ──
         campaign = extraction["campaign"]
+ 
+        if campaign.company_name.strip().lower() in ("unknown", "", "unknown."):
+            state.waiting_for     = "company_name"
+            state.last_extraction = extraction
+            response = get_clarification_question("company_name")
+            state.add_assistant_message(response)
+            return response, state
+        
         state.last_campaign = campaign
         state.waiting_for   = None
 

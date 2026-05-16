@@ -211,7 +211,6 @@ def save_feedback_on_campaign(
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.cursor()
 
-    # Compute actual CPL per channel
     actual_cpl = {}
     for ch in actual_spend:
         spend = actual_spend.get(ch, 0)
@@ -251,3 +250,49 @@ def get_campaign_count() -> int:
     count = cur.fetchone()[0]
     conn.close()
     return count
+
+
+# ─────────────────────────────────────────
+# DELETE
+# ─────────────────────────────────────────
+
+def delete_campaign(campaign_id: int) -> bool:
+    """
+    Permanently deletes a campaign row by ID.
+    Returns True on success, False if not found.
+    """
+    if not DB_PATH.exists():
+        return False
+    conn = sqlite3.connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return deleted > 0
+
+
+# ─────────────────────────────────────────
+# RENAME
+# ─────────────────────────────────────────
+
+def rename_campaign(campaign_id: int, new_name: str) -> bool:
+    """
+    Updates the company_name of a campaign row.
+    Returns True on success, False if not found.
+    """
+    if not DB_PATH.exists():
+        return False
+    new_name = new_name.strip()
+    if not new_name:
+        return False
+    conn = sqlite3.connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE campaigns SET company_name = ? WHERE id = ?",
+        (new_name, campaign_id),
+    )
+    updated = cur.rowcount
+    conn.commit()
+    conn.close()
+    return updated > 0

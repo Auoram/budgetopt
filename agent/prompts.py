@@ -29,6 +29,14 @@ IMPORTANT RULES:
    - students / youth / Gen Z / teens → students
    - managers / employees / workers / adults → professionals
 
+COMPANY NAME RULES — pay close attention:
+- Look for a proper noun that is the name of a company, brand, app, or product.
+- It is often mentioned right after "for", "called", "named", or at the start.
+- Examples of company names: "Cosmetics Morocco", "AtlasFinance", "CashFlow",
+  "Jumia", "InnovaTech", "MyApp", "Darija Learn", "HealthPlus".
+- If you find a company or product name, use it exactly as written.
+- ONLY use "Unknown" if there is truly NO company or product name in the message.
+
 PRIORITY MAPPING — pay close attention:
 - "cheap / cheapest / affordable / low cost / minimum spend /
   reduce cost / cost-effective / low budget" → low_cost
@@ -38,16 +46,34 @@ PRIORITY MAPPING — pay close attention:
   best results / targeted" → high_quality
 
 EXAMPLE INPUT:
+"I have 1,000,000 MAD for Cosmetics Morocco, fintech app, Morocco,
+8 months, Facebook and Instagram."
+EXAMPLE OUTPUT:
+{"company_name":"Cosmetics Morocco","sector":"health","target_countries":["Morocco"],"client_type":"b2c","age_min":18,"age_max":45,"audience_type":"professionals","goal":"generate_leads","horizon_months":8,"priority":"high_quality","total_budget":1000000,"allowed_channels":["facebook","instagram"],"max_pct_per_channel":0.5}
+
+EXAMPLE INPUT:
 "I have 5,000,000 MAD for a fintech app in Morocco, 3 months,
 Facebook and Instagram, target young adults 20-35 B2C."
 EXAMPLE OUTPUT:
 {"company_name":"Unknown","sector":"fintech","target_countries":["Morocco"],"client_type":"b2c","age_min":20,"age_max":35,"audience_type":"students","goal":"generate_leads","horizon_months":3,"priority":"high_quality","total_budget":5000000,"allowed_channels":["facebook","instagram"],"max_pct_per_channel":0.5}
 
 EXAMPLE INPUT:
+"AtlasFinance needs a campaign. Budget 2,000,000 MAD, Morocco and Egypt,
+Google Ads and Facebook, 6 months, B2B."
+EXAMPLE OUTPUT:
+{"company_name":"AtlasFinance","sector":"fintech","target_countries":["Morocco","Egypt"],"client_type":"b2b","age_min":25,"age_max":55,"audience_type":"professionals","goal":"generate_leads","horizon_months":6,"priority":"high_quality","total_budget":2000000,"allowed_channels":["google_ads","facebook"],"max_pct_per_channel":0.5}
+
+EXAMPLE INPUT:
 "SaaS B2B, France and Germany, 200000 euros, LinkedIn and Google,
 6 months, decision makers 35-55."
 EXAMPLE OUTPUT:
-{"company_name":"Unknown","sector":"saas","target_countries":["France","Germany"],"client_type":"b2b","age_min":35,"age_max":55,"audience_type":"business_owners","goal":"generate_leads","horizon_months":6,"priority":"high_quality","total_budget":2200000,"allowed_channels":["google_ads"],"max_pct_per_channel":0.5}
+{"company_name":"Unknown","sector":"saas","target_countries":["France","Germany"],"client_type":"b2b","age_min":35,"age_max":55,"audience_type":"business_owners","goal":"generate_leads","horizon_months":6,"priority":"high_quality","total_budget":2200000,"allowed_channels":["linkedin","google_ads"],"max_pct_per_channel":0.5}
+
+EXAMPLE INPUT:
+"Campaign for Darija Learn, education app, Morocco and Algeria,
+500,000 MAD, TikTok and Instagram, 3 months, students 18-25."
+EXAMPLE OUTPUT:
+{"company_name":"Darija Learn","sector":"education","target_countries":["Morocco","Algeria"],"client_type":"b2c","age_min":18,"age_max":25,"audience_type":"students","goal":"generate_leads","horizon_months":3,"priority":"high_quality","total_budget":500000,"allowed_channels":["tiktok","instagram"],"max_pct_per_channel":0.5}
 
 EXAMPLE INPUT:
 "Cheapest way to get leads for my SaaS in Morocco.
@@ -77,6 +103,11 @@ EXAMPLE INPUT:
 Budget 300,000 MAD. Instagram and TikTok. 2 months."
 EXAMPLE OUTPUT:
 {"company_name":"Unknown","sector":"ecommerce","target_countries":["Saudi Arabia","UAE","Kuwait"],"client_type":"b2c","age_min":18,"age_max":25,"audience_type":"students","goal":"increase_sales","horizon_months":2,"priority":"high_quality","total_budget":300000,"allowed_channels":["instagram","tiktok"],"max_pct_per_channel":0.5}
+
+EXAMPLE INPUT:
+"HealthPlus app, Morocco, 800,000 MAD, all channels, 4 months, B2C."
+EXAMPLE OUTPUT:
+{"company_name":"HealthPlus","sector":"health","target_countries":["Morocco"],"client_type":"b2c","age_min":18,"age_max":45,"audience_type":"professionals","goal":"generate_leads","horizon_months":4,"priority":"high_quality","total_budget":800000,"allowed_channels":["facebook","instagram","google_ads","email","seo","tiktok"],"max_pct_per_channel":0.5}
 
 Now extract from the user message below. Return ONLY the JSON object.
 """

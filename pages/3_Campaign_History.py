@@ -19,6 +19,8 @@ from core.campaign_store import (
     get_campaign_by_id,
     save_feedback_on_campaign,
     get_campaign_count,
+    delete_campaign,
+    rename_campaign,
 )
 from core.charts import channel_label, pie_budget_split, bar_expected_leads
 from core.optimizer import AllocationResult
@@ -38,7 +40,6 @@ st.set_page_config(
     layout     = "wide",
 )
 
-# ── Sidebar user info ─────────────────────────────────────
 with st.sidebar:
     show_user_sidebar()
 
@@ -63,10 +64,14 @@ st.markdown("""
 # SESSION STATE
 # ─────────────────────────────────────────
 
-if "selected_id" not in st.session_state:
-    st.session_state.selected_id = None
-if "feedback_saved" not in st.session_state:
-    st.session_state.feedback_saved = False
+if "selected_id"      not in st.session_state:
+    st.session_state.selected_id      = None
+if "feedback_saved"   not in st.session_state:
+    st.session_state.feedback_saved   = False
+if "confirm_delete"   not in st.session_state:
+    st.session_state.confirm_delete   = False
+if "renaming"         not in st.session_state:
+    st.session_state.renaming         = False
 
 
 # ─────────────────────────────────────────
@@ -83,7 +88,6 @@ def parse_json(val, default):
 
 
 def row_to_result(row: dict) -> AllocationResult:
-    """Reconstructs an AllocationResult from a DB row."""
     return AllocationResult(
         budget_per_channel = parse_json(row["budget_per_channel"], {}),
         pct_per_channel    = parse_json(row["pct_per_channel"],    {}),
@@ -96,7 +100,6 @@ def row_to_result(row: dict) -> AllocationResult:
 
 
 def row_to_campaign(row: dict) -> CampaignInput:
-    """Reconstructs a CampaignInput from a DB row."""
     return CampaignInput(
         company_name        = row["company_name"]        or "Unknown",
         sector              = row["sector"]              or "ecommerce",
@@ -135,6 +138,23 @@ def feedback_badge(submitted: int) -> str:
     return ""
 
 
+def already_submitted(row: dict, company_name: str) -> bool:
+    if row["feedback_submitted"]:
+        return True
+    import sqlite3
+    db = Path(__file__).parent.parent / "data" / "feedback.db"
+    try:
+        conn   = sqlite3.connect(db)
+        result = conn.execute(
+            "SELECT COUNT(*) FROM feedback WHERE company_name = ?",
+            (company_name,)
+        ).fetchone()
+        conn.close()
+        return result[0] > 0
+    except Exception:
+        return False
+
+
 # ─────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────
@@ -160,10 +180,11 @@ if total == 0:
 st.caption(f"{total} campaign{'s' if total != 1 else ''} saved.")
 
 # ─────────────────────────────────────────
-# LAYOUT — list on left, detail on right
+# LAYOUT
 # ─────────────────────────────────────────
 
 col_list, col_detail = st.columns([1, 2], gap="large")
+
 
 # ═════════════════════════════════════════
 # LEFT — SEARCH + CAMPAIGN LIST
@@ -177,7 +198,6 @@ with col_list:
         label_visibility = "collapsed",
     )
 
-    # Filter buttons
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
         show_form    = st.toggle("📋 Form",        value=True)
@@ -188,20 +208,17 @@ with col_list:
 
     st.divider()
 
-    # Load campaigns
     if search.strip():
         campaigns = search_campaigns(search.strip())
     else:
         campaigns = get_all_campaigns()
 
-    # Apply source filter
     filtered = [
         c for c in campaigns
         if (show_form and c["source"] == "form")
         or (show_chat and c["source"] == "chat")
     ]
 
-    # Apply feedback filter
     if show_pending:
         filtered = [c for c in filtered if not c["feedback_submitted"]]
 
@@ -210,13 +227,12 @@ with col_list:
     else:
         for c in filtered:
             countries = parse_json(c["target_countries"], [])
-            label = (
+            label     = (
                 f"**{c['company_name']}** · {c['sector'].title()} · "
                 f"{', '.join(countries)}"
             )
-            date_str = format_date(c["run_at"])
-            budget   = f"{int(c['total_budget']):,} MAD"
-
+            date_str  = format_date(c["run_at"])
+            budget    = f"{int(c['total_budget']):,} MAD"
             is_selected = st.session_state.selected_id == c["id"]
 
             if st.button(
@@ -225,8 +241,10 @@ with col_list:
                 use_container_width = True,
                 type                = "primary" if is_selected else "secondary",
             ):
-                st.session_state.selected_id   = c["id"]
-                st.session_state.feedback_saved = False
+                st.session_state.selected_id    = c["id"]
+                st.session_state.feedback_saved  = False
+                st.session_state.confirm_delete  = False
+                st.session_state.renaming        = False
                 st.rerun()
 
 
@@ -237,9 +255,7 @@ with col_list:
 with col_detail:
 
     if st.session_state.selected_id is None:
-        st.markdown(
-            "← Select a campaign from the list to view its details."
-        )
+        st.markdown("← Select a campaign from the list to view its details.")
         st.stop()
 
     row = get_campaign_by_id(st.session_state.selected_id)
@@ -261,6 +277,100 @@ with col_detail:
         unsafe_allow_html=True,
     )
     st.caption(f"Run on {format_date(row['run_at'])}")
+
+    # ── Action buttons row ───────────────────────────────
+    act1, act2, act3 = st.columns([1, 1, 4])
+
+    with act1:
+        if st.button(
+            "✏️ Rename",
+            key                 = "btn_rename",
+            use_container_width = True,
+        ):
+            st.session_state.renaming       = not st.session_state.renaming
+            st.session_state.confirm_delete = False
+            st.rerun()
+
+    with act2:
+        if st.button(
+            "🗑️ Delete",
+            key                 = "btn_delete",
+            use_container_width = True,
+            type                = "primary" if st.session_state.confirm_delete else "secondary",
+        ):
+            st.session_state.confirm_delete = not st.session_state.confirm_delete
+            st.session_state.renaming       = False
+            st.rerun()
+
+    # ── Rename inline form ───────────────────────────────
+    if st.session_state.renaming:
+        with st.container(border=True):
+            new_name = st.text_input(
+                label       = "New campaign name",
+                value       = row["company_name"],
+                key         = "rename_input",
+                placeholder = "Enter new name...",
+            )
+            r1, r2 = st.columns(2)
+            with r1:
+                if st.button(
+                    "Save name",
+                    key                 = "confirm_rename",
+                    type                = "primary",
+                    use_container_width = True,
+                ):
+                    if new_name.strip():
+                        ok = rename_campaign(row["id"], new_name.strip())
+                        if ok:
+                            st.session_state.renaming = False
+                            st.success(f"Renamed to **{new_name.strip()}**.")
+                            st.rerun()
+                        else:
+                            st.error("Rename failed.")
+                    else:
+                        st.warning("Name cannot be empty.")
+            with r2:
+                if st.button(
+                    "Cancel",
+                    key                 = "cancel_rename",
+                    use_container_width = True,
+                ):
+                    st.session_state.renaming = False
+                    st.rerun()
+
+    # ── Delete confirmation ──────────────────────────────
+    if st.session_state.confirm_delete:
+        with st.container(border=True):
+            st.warning(
+                f"Are you sure you want to permanently delete "
+                f"**{row['company_name']}**? This cannot be undone."
+            )
+            d1, d2 = st.columns(2)
+            with d1:
+                if st.button(
+                    "Yes, delete",
+                    key                 = "confirm_delete_yes",
+                    type                = "primary",
+                    use_container_width = True,
+                ):
+                    ok = delete_campaign(row["id"])
+                    if ok:
+                        st.session_state.selected_id    = None
+                        st.session_state.confirm_delete = False
+                        st.success("Campaign deleted.")
+                        st.rerun()
+                    else:
+                        st.error("Delete failed.")
+            with d2:
+                if st.button(
+                    "Cancel",
+                    key                 = "cancel_delete",
+                    use_container_width = True,
+                ):
+                    st.session_state.confirm_delete = False
+                    st.rerun()
+
+    st.divider()
 
     # ── Campaign details ─────────────────────────────────
     d1, d2, d3, d4 = st.columns(4)
@@ -295,7 +405,7 @@ with col_detail:
     with m3:
         st.metric("Estimated ROI", f"{roi:.0f}%")
 
-    # ── Tabs: table / charts / downloads ────────────────
+    # ── Tabs ─────────────────────────────────────────────
     tab_table, tab_charts, tab_dl = st.tabs([
         "Allocation table", "Charts", "Downloads"
     ])
@@ -408,28 +518,7 @@ with col_detail:
     # ── Feedback section ─────────────────────────────────
     st.markdown("### 📋 Post-campaign feedback")
 
-    # FIXED — also check the old feedback table
-    def already_submitted(campaign_id: int, company_name: str) -> bool:
-        """Returns True if feedback exists in either table."""
-        if row["feedback_submitted"]:
-            return True
-        # Cross-check old feedback table
-        import sqlite3
-        from pathlib import Path
-        db = Path(__file__).parent.parent / "data" / "feedback.db"
-        try:
-            conn = sqlite3.connect(db)
-            result = conn.execute(
-                "SELECT COUNT(*) FROM feedback WHERE company_name = ?",
-                (company_name,)
-            ).fetchone()
-            conn.close()
-            return result[0] > 0
-        except Exception:
-            return False
-
-    if already_submitted(row["id"], row["company_name"]):
-        # Show existing feedback
+    if already_submitted(row, row["company_name"]):
         st.success("Feedback already submitted for this campaign.")
 
         actual_spend  = parse_json(row["actual_spend"],  {})
@@ -440,7 +529,6 @@ with col_detail:
 
         st.caption(f"Submitted on {feedback_date}")
 
-        # Comparison table: recommended vs actual
         allowed_chs = parse_json(row["allowed_channels"], [])
         comp_rows   = []
         for ch in allowed_chs:
@@ -478,20 +566,15 @@ with col_detail:
             st.markdown(f"**Comments:** {comments}")
 
     elif st.session_state.feedback_saved:
-        st.success(
-            "Thank you — your feedback has been saved successfully."
-        )
+        st.success("Thank you — your feedback has been saved successfully.")
 
     else:
-        # Feedback form
         st.info(
             "💡 For detailed channel-by-channel performance tracking "
             "and budget re-optimization, use the **📈 Monitoring** "
             "page via the quick actions above."
         )
-        st.markdown(
-            "Or submit a quick summary of actual results below:"
-        )
+        st.markdown("Or submit a quick summary of actual results below:")
 
         allowed_chs = parse_json(row["allowed_channels"], [])
 
