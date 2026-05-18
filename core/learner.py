@@ -24,9 +24,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-DB_PATH   = Path(__file__).parent.parent / "data" / "feedback.db"
-CSV_PATH  = Path(__file__).parent.parent / "data" / "synthetic_campaigns.csv"
-MODEL_PATH= Path(__file__).parent.parent / "data" / "model.joblib"
+DB_PATH    = Path(__file__).parent.parent / "data" / "feedback.db"
+CSV_PATH   = Path(__file__).parent.parent / "data" / "synthetic_campaigns.csv"
+MODEL_PATH = Path(__file__).parent.parent / "data" / "model.joblib"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -37,15 +37,6 @@ def export_performance_for_retraining() -> list[dict]:
     """
     Converts campaign_performance rows into training rows
     compatible with synthetic_campaigns.csv.
-
-    For each performance entry we know:
-        channel, spend_actual, leads_actual, cpl, entry_date
-    We join with campaigns to get:
-        sector, cluster, client_type, goal, audience_type,
-        priority, horizon_months, age_min, age_max
-
-    Returns a list of dicts — one per performance row
-    that has both spend > 0 and leads > 0.
     """
     if not DB_PATH.exists():
         return []
@@ -87,7 +78,6 @@ def export_performance_for_retraining() -> list[dict]:
 
     training_rows = []
     for r in rows:
-        # Derive cluster from first country in target_countries JSON
         try:
             countries = json.loads(r["target_countries"])
             cluster   = COUNTRIES.get(countries[0], "maghreb") \
@@ -95,14 +85,9 @@ def export_performance_for_retraining() -> list[dict]:
         except Exception:
             cluster = "maghreb"
 
-        # Derive conv_rate from leads and spend
-        # proxy: leads per 100 MAD spent (normalised)
-        spend = float(r["spend_actual"])
-        leads = int(r["leads_actual"])
-        cpl   = float(r["cpl"])
-
-        # Rough conversion rate: leads / (spend / avg_cpl_for_channel)
-        # We use cpl itself as the denominator anchor
+        spend     = float(r["spend_actual"])
+        leads     = int(r["leads_actual"])
+        cpl       = float(r["cpl"])
         conv_rate = round(leads / (spend / cpl), 4) if spend > 0 else 0.03
         conv_rate = max(0.005, min(conv_rate, 0.30))
 
@@ -128,22 +113,13 @@ def export_performance_for_retraining() -> list[dict]:
 
 
 def count_retraining_rows() -> int:
-    """Returns how many performance rows are available for retraining."""
     return len(export_performance_for_retraining())
 
 
 def retrain_from_performance(min_rows: int = 5) -> dict:
     """
-    Main retraining entry point.
-
-    1. Exports real performance data.
-    2. If < min_rows available, returns an error dict.
-    3. Appends new rows to synthetic_campaigns.csv.
-    4. Retrains the ML model.
-    5. Returns metrics dict.
-
-    min_rows — minimum real rows required before retraining.
-               Default 5 to avoid retraining on a single entry.
+    Appends real performance data to training CSV and retrains.
+    Returns metrics dict including MAE + std confidence intervals.
     """
     new_rows = export_performance_for_retraining()
 
@@ -157,14 +133,12 @@ def retrain_from_performance(min_rows: int = 5) -> dict:
             "n_new_rows": len(new_rows),
         }
 
-    # Load existing training data
     if not CSV_PATH.exists():
         return {"error": "synthetic_campaigns.csv not found. Run startup first."}
 
     existing_df = pd.read_csv(CSV_PATH)
     new_df      = pd.DataFrame(new_rows)
 
-    # Tag source so we can audit later
     new_df["source"] = "real_performance"
     if "source" not in existing_df.columns:
         existing_df["source"] = "synthetic"
@@ -175,52 +149,46 @@ def retrain_from_performance(min_rows: int = 5) -> dict:
     n_before = len(existing_df)
     n_after  = len(combined)
 
-    # Retrain
     from core.predictor import train
     metrics = train()
 
     return {
-        "success":    True,
-        "n_new_rows": len(new_rows),
-        "n_before":   n_before,
-        "n_after":    n_after,
-        "cpl_mae":    metrics.get("cpl_mae"),
-        "conv_mae":   metrics.get("conv_mae"),
-        "n_train":    metrics.get("n_train"),
-        "n_test":     metrics.get("n_test"),
+        "success":      True,
+        "n_new_rows":   len(new_rows),
+        "n_before":     n_before,
+        "n_after":      n_after,
+        "cpl_mae":      metrics.get("cpl_mae"),
+        "cpl_std":      metrics.get("cpl_std"),
+        "cpl_r2":       metrics.get("cpl_r2"),
+        "conv_mae":     metrics.get("conv_mae"),
+        "conv_std":     metrics.get("conv_std"),
+        "conv_r2":      metrics.get("conv_r2"),
+        "n_train":      metrics.get("n_train"),
+        "n_test":       metrics.get("n_test"),
         "retrained_at": datetime.now().isoformat(),
     }
 
 
 def get_last_retrain_info() -> dict:
-    """
-    Returns metadata about the current model:
-    modification time, training data row count.
-    """
+    """Returns metadata about the current model file."""
     if not MODEL_PATH.exists():
         return {"trained": False}
 
     import joblib
     mtime = datetime.fromtimestamp(MODEL_PATH.stat().st_mtime)
 
-    n_rows = 0
-    if CSV_PATH.exists():
-        try:
-            n_rows = len(pd.read_csv(CSV_PATH))
-        except Exception:
-            pass
-
-    # Count real vs synthetic rows
-    n_real = 0
+    n_rows      = 0
+    n_real      = 0
     n_synthetic = 0
     if CSV_PATH.exists():
         try:
             df = pd.read_csv(CSV_PATH)
+            n_rows = len(df)
             if "source" in df.columns:
                 n_real      = int((df["source"] == "real_performance").sum())
                 n_synthetic = int((df["source"] == "synthetic").sum())
             else:
-                n_synthetic = len(df)
+                n_synthetic = n_rows
         except Exception:
             pass
 
@@ -233,11 +201,62 @@ def get_last_retrain_info() -> dict:
     }
 
 
+def get_model_metrics() -> dict:
+    """
+    Returns the metrics stored inside model.joblib:
+    MAE, std (confidence interval), R² for both models.
+    Used by the page 7 model performance card.
+    Returns empty dict if model not found or not yet upgraded.
+    """
+    from core.predictor import get_stored_metrics
+    return get_stored_metrics()
+
+
+def get_channel_uncertainty(campaign) -> pd.DataFrame:
+    """
+    Runs predict_channel_with_std() for every allowed channel
+    in the campaign and returns a DataFrame with CPL estimates
+    and their ± uncertainty.
+
+    Columns:
+        channel, cpl_est, cpl_low, cpl_high, cpl_std,
+        conv_est, conv_std, source
+    """
+    from core.predictor import predict_channel_with_std
+    from core.data_model import COUNTRIES
+
+    cluster = campaign.clusters[0] if campaign.clusters else "maghreb"
+
+    rows = []
+    for ch in campaign.allowed_channels:
+        r = predict_channel_with_std(
+            sector         = campaign.sector,
+            cluster        = cluster,
+            channel        = ch,
+            client_type    = campaign.client_type,
+            goal           = campaign.goal,
+            audience_type  = campaign.audience_type or "professionals",
+            priority       = campaign.priority,
+            horizon_months = campaign.horizon_months,
+            age_min        = campaign.age_min,
+            age_max        = campaign.age_max,
+            budget_mad     = campaign.total_budget,
+        )
+        rows.append({
+            "channel":   ch,
+            "cpl_est":   r.get("predicted_cpl"),
+            "cpl_low":   r.get("cpl_low"),
+            "cpl_high":  r.get("cpl_high"),
+            "cpl_std":   r.get("cpl_std"),
+            "conv_est":  r.get("predicted_conv"),
+            "conv_std":  r.get("conv_std"),
+            "source":    r.get("source"),
+        })
+
+    return pd.DataFrame(rows)
+
+
 def preview_retraining_data() -> pd.DataFrame:
-    """
-    Returns a preview DataFrame of the real performance rows
-    that would be added on next retrain.
-    """
     rows = export_performance_for_retraining()
     if not rows:
         return pd.DataFrame()
@@ -250,15 +269,8 @@ def preview_retraining_data() -> pd.DataFrame:
 
 def get_freelancer_scores() -> pd.DataFrame:
     """
-    Returns a DataFrame with one row per freelancer that has
-    at least one rating, including:
-        freelancer_id, name, role, avg_rating, n_campaigns,
-        n_rated, score (0–1 composite used for ranking boost)
-
-    score formula:
-        base     = avg_rating / 5          (0–1)
-        volume   = min(n_rated / 5, 1)    (saturates at 5 campaigns)
-        score    = 0.75 * base + 0.25 * volume
+    Returns one row per freelancer with composite score.
+    score = 0.75 * (avg_rating/5) + 0.25 * min(n_rated/5, 1)
     """
     if not DB_PATH.exists():
         return pd.DataFrame()
@@ -272,11 +284,11 @@ def get_freelancer_scores() -> pd.DataFrame:
                 f.role,
                 f.hourly_rate_mad,
                 f.experience_level,
-                COUNT(ct.id)                    AS n_campaigns,
-                COUNT(ct.rating)                AS n_rated,
-                ROUND(AVG(ct.rating), 2)        AS avg_rating,
-                MIN(ct.rating)                  AS min_rating,
-                MAX(ct.rating)                  AS max_rating
+                COUNT(ct.id)             AS n_campaigns,
+                COUNT(ct.rating)         AS n_rated,
+                ROUND(AVG(ct.rating), 2) AS avg_rating,
+                MIN(ct.rating)           AS min_rating,
+                MAX(ct.rating)           AS max_rating
             FROM campaign_team ct
             JOIN freelancers f ON ct.freelancer_id = f.id
             WHERE ct.status != 'proposed'
@@ -290,42 +302,30 @@ def get_freelancer_scores() -> pd.DataFrame:
     if df.empty:
         return df
 
-    # Compute composite score
     df["avg_rating"] = pd.to_numeric(df["avg_rating"], errors="coerce").fillna(0)
     df["n_rated"]    = pd.to_numeric(df["n_rated"],    errors="coerce").fillna(0)
 
-    base   = df["avg_rating"] / 5.0
-    volume = (df["n_rated"] / 5.0).clip(upper=1.0)
+    base        = df["avg_rating"] / 5.0
+    volume      = (df["n_rated"] / 5.0).clip(upper=1.0)
     df["score"] = (0.75 * base + 0.25 * volume).round(3)
 
     return df
 
 
 def get_freelancer_score(freelancer_id: int) -> Optional[float]:
-    """
-    Returns the composite score (0–1) for one freelancer,
-    or None if they have no ratings yet.
-    Used by find_matches() for ranking boost.
-    """
     scores_df = get_freelancer_scores()
     if scores_df.empty:
         return None
-
     row = scores_df[scores_df["freelancer_id"] == freelancer_id]
     if row.empty:
         return None
-
     n_rated = int(row["n_rated"].values[0])
     if n_rated == 0:
         return None
-
     return float(row["score"].values[0])
 
 
 def get_top_freelancers(role: Optional[str] = None, top_n: int = 10) -> pd.DataFrame:
-    """
-    Returns top-rated freelancers, optionally filtered by role.
-    """
     df = get_freelancer_scores()
     if df.empty:
         return df
@@ -335,10 +335,6 @@ def get_top_freelancers(role: Optional[str] = None, top_n: int = 10) -> pd.DataF
 
 
 def get_underperforming_freelancers(min_campaigns: int = 2) -> pd.DataFrame:
-    """
-    Returns freelancers with avg_rating < 3 and at least
-    min_campaigns completed — worth reviewing.
-    """
     df = get_freelancer_scores()
     if df.empty:
         return df
@@ -349,20 +345,15 @@ def get_underperforming_freelancers(min_campaigns: int = 2) -> pd.DataFrame:
 
 
 def get_performance_summary_by_role() -> pd.DataFrame:
-    """
-    Returns avg rating grouped by role — useful for spotting
-    which role categories have the most/least reliable freelancers.
-    """
     df = get_freelancer_scores()
     if df.empty:
         return df
-
     summary = (
         df.groupby("role")
         .agg(
-            n_freelancers = ("freelancer_id", "count"),
-            avg_rating    = ("avg_rating",    "mean"),
-            n_total_campaigns = ("n_campaigns", "sum"),
+            n_freelancers     = ("freelancer_id", "count"),
+            avg_rating        = ("avg_rating",    "mean"),
+            n_total_campaigns = ("n_campaigns",   "sum"),
         )
         .round(2)
         .reset_index()
