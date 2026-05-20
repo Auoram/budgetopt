@@ -8,7 +8,7 @@ import pandas as pd
 
 from core.auth import require_login
 from core.auth_ui import show_user_sidebar
- 
+
 # ── Auth guard — must be first ────────────────────────────
 require_login()
 
@@ -50,7 +50,6 @@ st.set_page_config(
     initial_sidebar_state = "collapsed",
 )
 
-# ── Sidebar user info ─────────────────────────────────────
 with st.sidebar:
     show_user_sidebar()
 
@@ -88,22 +87,22 @@ st.markdown("""
 
 def init_session_state():
     defaults = {
-        "company_name":        "",
-        "sector":              SECTORS[0],
-        "target_countries":    ["Morocco"],
-        "client_type":         "b2c",
-        "age_min":             18,
-        "age_max":             45,
-        "audience_type":       AUDIENCE_TYPES[1],
-        "goal":                GOALS[0],
-        "horizon_months":      3,
-        "priority":            PRIORITIES[2],
-        "total_budget":        100_000.0,
-        "allowed_channels":    list(CHANNELS),
-        "max_pct_pct":         50,
-        "result":              None,
-        "campaign":            None,
-        "form_submitted":      False,
+        "company_name":     "",
+        "sector":           SECTORS[0],
+        "target_countries": ["Morocco"],
+        "client_type":      "b2c",
+        "age_min":          18,
+        "age_max":          45,
+        "audience_type":    AUDIENCE_TYPES[1],
+        "goal":             GOALS[0],
+        "horizon_months":   3,
+        "priority":         PRIORITIES[2],
+        "total_budget":     100_000.0,
+        "allowed_channels": list(CHANNELS),
+        "max_pct_pct":      50,
+        "result":           None,
+        "campaign":         None,
+        "form_submitted":   False,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -331,13 +330,9 @@ with col_form:
 
     col_a, col_b = st.columns(2)
     with col_a:
-        st.caption(
-            f"≈ ${st.session_state['total_budget'] / 10:,.0f} USD"
-        )
+        st.caption(f"≈ ${st.session_state['total_budget'] / 10:,.0f} USD")
     with col_b:
-        st.caption(
-            f"≈ €{st.session_state['total_budget'] / 11:,.0f} EUR"
-        )
+        st.caption(f"≈ €{st.session_state['total_budget'] / 11:,.0f} EUR")
 
     st.multiselect(
         label       = "Allowed channels",
@@ -396,35 +391,57 @@ with col_form:
         f"{max_mad:,.0f} MAD per channel."
     )
 
+    # ── Constraint validation ─────────────────────────────
+    # Check that n_channels × max_pct >= 100% so the optimizer
+    # can always allocate the full budget.
+    constraint_ok = True
+
     if st.session_state["max_pct_pct"] == 100:
         st.info("No constraint — one channel could get the full budget.")
+
     elif st.session_state["allowed_channels"]:
-        n_ch = len(st.session_state["allowed_channels"])
-        if (st.session_state["max_pct_pct"] / 100) * n_ch < 1.0:
+        n_ch     = len(st.session_state["allowed_channels"])
+        max_pct  = st.session_state["max_pct_pct"]
+        total_pct = max_pct * n_ch   # maximum possible allocation %
+
+        if total_pct < 100:
+            # Hard block — impossible to allocate full budget
+            constraint_ok = False
+            min_pct_needed = -(-100 // n_ch)  # ceiling division
+            st.error(
+                f"⚠️ Impossible constraint: {n_ch} channels × {max_pct}% "
+                f"= {total_pct}% — cannot reach 100%. "
+                f"Raise max % to at least **{min_pct_needed}%** "
+                f"or add more channels."
+            )
+        elif total_pct < 120:
+            # Soft warning — technically possible but very tight,
+            # optimizer may produce uneven results
             st.warning(
-                f"{n_ch} channels × {st.session_state['max_pct_pct']}% = "
-                f"{st.session_state['max_pct_pct'] * n_ch}% — "
-                "increase max % or add more channels."
+                f"Tight constraint: {n_ch} channels × {max_pct}% = "
+                f"{total_pct}%. The optimizer has little room to manoeuvre — "
+                f"allocation may be forced to be nearly equal across channels."
             )
 
     st.divider()
 
-    # ── Validation + Calculate button ──
+    # ── Validation + Calculate button ──────────────────────
+    # All conditions that must be true to allow submission
+    missing = []
+    if not st.session_state["company_name"].strip():
+        missing.append("company name")
+    if not st.session_state["target_countries"]:
+        missing.append("at least one country")
+    if not st.session_state["allowed_channels"]:
+        missing.append("at least one channel")
+
     can_submit = (
-        bool(st.session_state["company_name"].strip()) and
-        bool(st.session_state["target_countries"])     and
-        bool(st.session_state["allowed_channels"])     and
-        st.session_state["total_budget"] > 0
+        len(missing) == 0                      and
+        st.session_state["total_budget"] > 0   and
+        constraint_ok                           # NEW — blocks on impossible constraint
     )
 
-    if not can_submit:
-        missing = []
-        if not st.session_state["company_name"].strip():
-            missing.append("company name")
-        if not st.session_state["target_countries"]:
-            missing.append("at least one country")
-        if not st.session_state["allowed_channels"]:
-            missing.append("at least one channel")
+    if missing:
         st.warning(f"Please fill in: {', '.join(missing)}.")
 
     calculate_clicked = st.button(
@@ -629,11 +646,11 @@ with col_results:
                     ],
                 })
                 meta = pd.DataFrame({
-                    "Channel":             ["", "TOTAL"],
-                    "Budget_MAD":          ["", int(campaign.total_budget)],
-                    "Share_pct":           ["", 100],
-                    "Expected_leads":      ["", int(result.total_leads)],
-                    "Expected_revenue_MAD":["", int(result.total_revenue)],
+                    "Channel":              ["", "TOTAL"],
+                    "Budget_MAD":           ["", int(campaign.total_budget)],
+                    "Share_pct":            ["", 100],
+                    "Expected_leads":       ["", int(result.total_leads)],
+                    "Expected_revenue_MAD": ["", int(result.total_revenue)],
                 })
                 full_export = pd.concat(
                     [export_df, meta], ignore_index=True
@@ -712,7 +729,6 @@ with col_results:
 
         st.divider()
 
-        # ── Summary caption ──
         st.caption(
             f"Budget: {int(campaign.total_budget):,} MAD · "
             f"Horizon: {campaign.horizon_months} months · "
@@ -722,7 +738,6 @@ with col_results:
 
         st.divider()
 
-        # ── Post-campaign redirect notice ─────────────────
         st.info(
             "📋 **Campaign saved automatically.** "
             "To submit post-campaign feedback, go to "
