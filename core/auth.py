@@ -19,11 +19,30 @@ The sidebar is hidden until login succeeds.
 import sqlite3
 import hashlib
 import os
+import base64
 import streamlit as st
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent.parent / "data" / "feedback.db"
+DB_PATH    = Path(__file__).parent.parent / "data" / "feedback.db"
+LOGO_PATH  = Path(__file__).parent.parent / "assets" / "logo.png"
+
+# ── Company identity — edit these two lines ───────────────
+COMPANY_NAME    = "V12Trading"   # ← replace with real name
+COMPANY_TAGLINE = "AI-powered marketing budget allocation"
+
+
+# ─────────────────────────────────────────
+# LOGO HELPER
+# ─────────────────────────────────────────
+
+def _logo_base64() -> str | None:
+    """Returns the logo as a base64 string, or None if file not found."""
+    try:
+        with open(LOGO_PATH, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except FileNotFoundError:
+        return None
 
 
 # ─────────────────────────────────────────
@@ -139,7 +158,6 @@ def update_last_login(username: str):
 
 
 def change_password(username: str, new_password: str):
-    """Updates a user's password."""
     salt          = _make_salt()
     password_hash = _hash_password(new_password, salt)
     conn = sqlite3.connect(DB_PATH)
@@ -152,7 +170,6 @@ def change_password(username: str, new_password: str):
 
 
 def get_all_users() -> list[dict]:
-    """Returns all users without password fields."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute("""
@@ -164,7 +181,6 @@ def get_all_users() -> list[dict]:
 
 
 def delete_user(username: str) -> bool:
-    """Deletes a user (cannot delete admins). Returns True if deleted."""
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.execute(
         "DELETE FROM users WHERE username = ? AND role != 'admin'",
@@ -206,23 +222,66 @@ def logout():
 
 
 # ─────────────────────────────────────────
-# CSS — hide sidebar on login screen
+# CSS
 # ─────────────────────────────────────────
 
 def _hide_sidebar():
-    """
-    Injects CSS that completely hides the sidebar
-    and its toggle — used only on the login screen
-    so users can't navigate to other pages before logging in.
-    """
     st.markdown("""
     <style>
         [data-testid="stSidebar"]         { display: none !important; }
         [data-testid="collapsedControl"]  { display: none !important; }
         [data-testid="stSidebarNavItems"] { display: none !important; }
-        .main .block-container {
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
+    </style>
+    """, unsafe_allow_html=True)
+
+def _login_styles():
+    st.markdown("""
+    <style>
+        /* Full-page centering */
+        .login-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            padding: 2rem 1rem;
+        }
+        /* Logo image */
+        .login-logo {
+            max-height: 90px;
+            max-width: 260px;
+            object-fit: contain;
+            margin-bottom: 1rem;
+        }
+        /* Company name */
+        .login-company {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-color);
+            margin-bottom: 0.15rem;
+            text-align: center;
+        }
+        /* Tagline */
+        .login-tagline {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        /* Card title */
+        .login-card-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 0.6rem;
+            color: var(--text-color);
+        }
+        /* Footer note */
+        .login-footer {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.8rem;
+            margin-top: 1rem;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -233,35 +292,44 @@ def _hide_sidebar():
 # ─────────────────────────────────────────
 
 def _show_login_page():
-    """
-    Renders the full-screen centered login form.
-    Sidebar is completely hidden.
-    """
     _hide_sidebar()
+    _login_styles()
 
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-
-    _, center, _ = st.columns([1, 1.2, 1])
+    # Use wide columns so the center feels spacious
+    _, center, _ = st.columns([1, 1.6, 1])
 
     with center:
 
-        # Logo + app name
-        st.markdown("""
-        <div style='text-align:center; margin-bottom:2rem;'>
-            <div style='font-size:3.5rem;'>📊</div>
-            <div style='font-size:2rem; font-weight:700; color:#111;
-                        margin-top:0.3rem;'>BudgetOpt</div>
-            <div style='font-size:0.95rem; color:#6b7280; margin-top:0.4rem;'>
-                AI-powered marketing budget allocation
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # ── Logo block ────────────────────────────────────
+        logo_b64 = _logo_base64()
 
-        # Login card
+        if logo_b64:
+            # Real logo from assets/logo.png
+            st.markdown(
+                f"<div style='text-align:center; margin-top:2rem; margin-bottom:0.8rem;'>"
+                f"<img src='data:image/png;base64,{logo_b64}' class='login-logo'>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            # Fallback: emoji icon
+            st.markdown(
+                "<div style='text-align:center; font-size:3.5rem; "
+                "margin-top:2rem; margin-bottom:0.5rem;'>📊</div>",
+                unsafe_allow_html=True,
+            )
+
+        # ── Company name + tagline ────────────────────────
+        st.markdown(
+            f"<div class='login-company'>{COMPANY_NAME}</div>"
+            f"<div class='login-tagline'>{COMPANY_TAGLINE}</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Login card ────────────────────────────────────
         with st.container(border=True):
             st.markdown(
-                "<p style='font-weight:600; font-size:1.05rem;"
-                " margin-bottom:0.5rem;'>Sign in to your account</p>",
+                "<p class='login-card-title'>Sign in to your account</p>",
                 unsafe_allow_html=True,
             )
 
@@ -295,15 +363,14 @@ def _show_login_page():
                         st.error("Incorrect username or password.")
 
         st.markdown(
-            "<p style='text-align:center; color:#9ca3af; font-size:0.8rem;"
-            " margin-top:1rem;'>"
+            "<p class='login-footer'>"
             "Contact your administrator if you need access.</p>",
             unsafe_allow_html=True,
         )
 
 
 # ─────────────────────────────────────────
-# MAIN GUARD — call at top of every page
+# MAIN GUARD
 # ─────────────────────────────────────────
 
 def require_login():
@@ -318,9 +385,11 @@ def require_login():
 
     if not is_logged_in():
         st.set_page_config(
-            page_title            = "BudgetOpt — Sign in",
-            page_icon             = "📊",
-            layout                = "centered",
+            page_title            = "Sign in",
+            page_icon             = (
+                str(LOGO_PATH) if LOGO_PATH.exists() else "📊"
+            ),
+            layout                = "wide",
             initial_sidebar_state = "collapsed",
         )
         _show_login_page()
