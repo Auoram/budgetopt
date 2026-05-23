@@ -27,6 +27,7 @@ from core.optimizer import AllocationResult
 from core.pdf_export import generate_pdf
 from core.data_model import CampaignInput
 import io
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 # ─────────────────────────────────────────
 # STARTUP
@@ -35,9 +36,10 @@ import io
 init_campaign_store()
 
 st.set_page_config(
-    page_title = "BudgetOpt — Campaign History",
-    page_icon  = "🗂️",
-    layout     = "wide",
+    page_title            = f"{COMPANY_NAME} — Campaign History",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "🗂️",
+    layout                = "wide",
+    initial_sidebar_state = "expanded",
 )
 
 with st.sidebar:

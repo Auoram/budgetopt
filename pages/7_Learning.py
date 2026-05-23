@@ -44,6 +44,7 @@ from core.startup import (
 )
 from core.feedback import init_db
 from core.campaign_store import init_campaign_store, get_all_campaigns
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 ensure_model_exists()
 ensure_team_tables_exist()
@@ -53,10 +54,10 @@ init_db()
 init_campaign_store()
 
 st.set_page_config(
-    page_title            = "BudgetOpt — Learning",
-    page_icon             = "🧠",
+    page_title            = f"{COMPANY_NAME} — Learning",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "🧠",
     layout                = "wide",
-    initial_sidebar_state = "collapsed",
+    initial_sidebar_state = "expanded",
 )
 
 st.markdown("""

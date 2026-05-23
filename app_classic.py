@@ -34,6 +34,7 @@ from core.startup import (
     ensure_performance_tables_exist,
 )
 from core.campaign_store import init_campaign_store, save_campaign_run
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 # ── Startup checks ────────────────────────────────────────
 ensure_model_exists()
@@ -44,10 +45,10 @@ init_db()
 init_campaign_store()
 
 st.set_page_config(
-    page_title            = "BudgetOpt — Campaign Allocator",
-    page_icon             = "📊",
+    page_title            = f"{COMPANY_NAME} — Campaign Allocator",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "📊",
     layout                = "wide",
-    initial_sidebar_state = "collapsed",
+    initial_sidebar_state = "expanded",
 )
 
 with st.sidebar:

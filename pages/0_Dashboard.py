@@ -27,6 +27,7 @@ from core.startup import (
     ensure_performance_tables_exist,
 )
 from core.feedback import init_db
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 ensure_model_exists()
 ensure_team_tables_exist()
@@ -38,8 +39,8 @@ init_campaign_store()
 DB_PATH = Path(__file__).parent.parent / "data" / "feedback.db"
 
 st.set_page_config(
-    page_title            = "BudgetOpt — Dashboard",
-    page_icon             = "📊",
+    page_title            = f"{COMPANY_NAME} — Dashboard",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "📊",
     layout                = "wide",
     initial_sidebar_state = "expanded",
 )

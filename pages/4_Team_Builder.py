@@ -50,6 +50,7 @@ from core.team_db import (
 from core.campaign_store import get_all_campaigns
 from core.feedback import init_db  
 from core.startup import ensure_model_exists
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 # ── Startup ───────────────────────────────────────────────
 ensure_model_exists()
@@ -60,10 +61,10 @@ init_team_tables()
 # PAGE CONFIG
 # ─────────────────────────────────────────
 st.set_page_config(
-    page_title  = "BudgetOpt — Team Builder",
-    page_icon   = "👥",
-    layout      = "wide",
-    initial_sidebar_state = "collapsed",
+    page_title            = f"{COMPANY_NAME} — Team Builder",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "👥",
+    layout                = "wide",
+    initial_sidebar_state = "expanded",
 )
 
 with st.sidebar:

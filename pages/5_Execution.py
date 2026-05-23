@@ -45,6 +45,7 @@ from core.task_db import (
 from core.campaign_store import get_all_campaigns
 from core.feedback import init_db  
 from core.startup import ensure_model_exists, ensure_team_tables_exist
+from core.auth import COMPANY_NAME, LOGO_PATH
 
 # ── Startup ────────────────────────────────────────────────
 ensure_model_exists()
@@ -56,10 +57,10 @@ init_task_tables()
 # PAGE CONFIG
 # ─────────────────────────────────────────
 st.set_page_config(
-    page_title            = "BudgetOpt — Execution",
-    page_icon             = "🚀",
+    page_title            = f"{COMPANY_NAME} — Execution",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "🚀",
     layout                = "wide",
-    initial_sidebar_state = "collapsed",
+    initial_sidebar_state = "expanded",
 )
 
 with st.sidebar:
