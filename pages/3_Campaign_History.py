@@ -130,8 +130,8 @@ def format_date(iso: str) -> str:
 
 def source_badge(source: str) -> str:
     if source == "chat":
-        return '<span class="badge-chat">🤖 Chat</span>'
-    return '<span class="badge-form">📋 Form</span>'
+        return '<span class="badge-chat">Chat</span>'
+    return '<span class="badge-form">Form</span>'
 
 
 def feedback_badge(submitted: int) -> str:
@@ -162,7 +162,7 @@ def already_submitted(row: dict, company_name: str) -> bool:
 # ─────────────────────────────────────────
 
 st.markdown(
-    '<div class="main-title">🗂️ Campaign History</div>',
+    '<div class="main-title">Campaign History</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -202,11 +202,11 @@ with col_list:
 
     f_col1, f_col2, f_col3 = st.columns(3)
     with f_col1:
-        show_form    = st.toggle("📋 Form",        value=True)
+        show_form    = st.toggle("Form",        value=True)
     with f_col2:
-        show_chat    = st.toggle("🤖 Chat",        value=True)
+        show_chat    = st.toggle("Chat",        value=True)
     with f_col3:
-        show_pending = st.toggle("⏳ No feedback", value=False)
+        show_pending = st.toggle("No feedback", value=False)
 
     st.divider()
 
@@ -285,7 +285,7 @@ with col_detail:
 
     with act1:
         if st.button(
-            "✏️ Rename",
+            "Rename",
             key                 = "btn_rename",
             use_container_width = True,
         ):
@@ -295,7 +295,7 @@ with col_detail:
 
     with act2:
         if st.button(
-            "🗑️ Delete",
+            "Delete",
             key                 = "btn_delete",
             use_container_width = True,
             type                = "primary" if st.session_state.confirm_delete else "secondary",
@@ -494,19 +494,19 @@ with col_detail:
     qa1, qa2, qa3 = st.columns(3)
     with qa1:
         st.link_button(
-            "👥 Assign team",
+            "Assign team",
             url                 = "4_Team_Builder",
             use_container_width = True,
         )
     with qa2:
         st.link_button(
-            "🚀 Manage tasks",
+            "Manage tasks",
             url                 = "5_Execution",
             use_container_width = True,
         )
     with qa3:
         st.link_button(
-            "📈 Monitor & re-optimize",
+            "Monitor & re-optimize",
             url                 = "6_Monitoring",
             use_container_width = True,
         )
@@ -518,7 +518,7 @@ with col_detail:
     st.divider()
 
     # ── Feedback section ─────────────────────────────────
-    st.markdown("### 📋 Post-campaign feedback")
+    st.markdown("### Post-campaign feedback")
 
     if already_submitted(row, row["company_name"]):
         st.success("Feedback already submitted for this campaign.")
@@ -572,8 +572,8 @@ with col_detail:
 
     else:
         st.info(
-            "💡 For detailed channel-by-channel performance tracking "
-            "and budget re-optimization, use the **📈 Monitoring** "
+            "For detailed channel-by-channel performance tracking "
+            "and budget re-optimization, use the **Monitoring** "
             "page via the quick actions above."
         )
         st.markdown("Or submit a quick summary of actual results below:")

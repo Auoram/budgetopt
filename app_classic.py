@@ -116,7 +116,7 @@ init_session_state()
 # HEADER
 # ─────────────────────────────────────────
 
-st.markdown('<div class="main-title">📊 BudgetOpt</div>',
+st.markdown('<div class="main-title">Budget Allocation Form</div>',
             unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">AI-powered marketing budget allocation — '
@@ -339,13 +339,13 @@ with col_form:
         label       = "Allowed channels",
         options     = CHANNELS,
         format_func = lambda x: {
-            "facebook":   "📘 Facebook Ads",
-            "instagram":  "📷 Instagram Ads",
-            "google_ads": "🔍 Google Ads",
-            "email":      "📧 Email Marketing",
-            "seo":        "🌱 SEO / Content",
-            "tiktok":     "🎵 TikTok Ads",
-            "linkedin":   "💼 LinkedIn Ads",
+            "facebook":   "Facebook Ads",
+            "instagram":  "Instagram Ads",
+            "google_ads": "Google Ads",
+            "email":      "Email Marketing",
+            "seo":        "SEO / Content",
+            "tiktok":     "TikTok Ads",
+            "linkedin":   "LinkedIn Ads",
         }.get(x, x),
         help = "Only selected channels will receive budget.",
         key  = "allowed_channels",
@@ -410,7 +410,7 @@ with col_form:
             constraint_ok = False
             min_pct_needed = -(-100 // n_ch)  # ceiling division
             st.error(
-                f"⚠️ Impossible constraint: {n_ch} channels × {max_pct}% "
+                f"Impossible constraint: {n_ch} channels × {max_pct}% "
                 f"= {total_pct}% — cannot reach 100%. "
                 f"Raise max % to at least **{min_pct_needed}%** "
                 f"or add more channels."
@@ -740,9 +740,9 @@ with col_results:
         st.divider()
 
         st.info(
-            "📋 **Campaign saved automatically.** "
+            "**Campaign saved automatically.** "
             "To submit post-campaign feedback, go to "
-            "**🗂️ Campaign History** in the sidebar. "
+            "**Campaign History** in the sidebar. "
             "To track performance and re-optimize, go to "
-            "**📈 Monitoring**."
+            "**Monitoring**."
         )

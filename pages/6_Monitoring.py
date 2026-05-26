@@ -88,7 +88,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">📈 Monitoring</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Monitoring</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">Track real campaign performance, compare against plan, '
     'and re-optimize remaining budget based on actual data.</div>',
@@ -192,9 +192,9 @@ def rec_to_original_result(rec: dict):
 # TABS
 # ─────────────────────────────────────────
 tab_log, tab_dash, tab_reopt = st.tabs([
-    "📝 Log performance",
-    "📊 Dashboard",
-    "🔄 Re-optimize",
+    "Log performance",
+    "Dashboard",
+    "Re-optimize",
 ])
 
 
@@ -301,7 +301,7 @@ with tab_log:
 
     # ── Save button ───────────────────────────────────────
     if st.button(
-        "💾 Save performance log",
+        "Save performance log",
         type="primary",
         use_container_width=True,
         key="log_save",
@@ -314,7 +314,7 @@ with tab_log:
         )
         if n > 0:
             st.success(
-                f"✅ Saved {n} channel entries for "
+                f"Saved {n} channel entries for "
                 f"{entry_date.strftime('%d %b %Y')}"
                 f"{f' ({period_label})' if period_label else ''}."
             )
@@ -647,7 +647,7 @@ with tab_reopt:
     )
 
     reopt_clicked = st.button(
-        "🔄 Re-optimize budget now →",
+        "Re-optimize budget now →",
         type="primary",
         use_container_width=True,
         key="reopt_btn",

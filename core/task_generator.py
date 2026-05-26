@@ -763,15 +763,15 @@ def generate_tasks(campaign: CampaignInput) -> List[Task]:
 
 
 CATEGORY_EMOJI = {
-    "Creative":   "🎨",
-    "Setup":      "⚙️",
-    "Launch":     "🚀",
-    "Monitoring": "📈",
-    "Reporting":  "📋",
+    "Creative":   "Creative",
+    "Setup":      "Setup",
+    "Launch":     "Launch",
+    "Monitoring": "Monitoring",
+    "Reporting":  "Reporting",
 }
 
 PRIORITY_COLOR = {
-    "high":   "🔴",
-    "medium": "🟡",
-    "low":    "🟢",
+    "high":   "High",
+    "medium": "Medium",
+    "low":    "Low",
 }

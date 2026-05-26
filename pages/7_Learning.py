@@ -75,7 +75,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">🧠 Learning</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Learning</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">Improve the system over time — track model accuracy, '
     'retrain with real campaign data, and monitor freelancer performance.</div>',
@@ -90,9 +90,9 @@ with st.sidebar:
 # ─────────────────────────────────────────
 
 tab_perf, tab_ml, tab_freelancers = st.tabs([
-    "📊 Model Performance",
-    "🔁 ML Retraining",
-    "⭐ Freelancer Performance",
+    "Model Performance",
+    "ML Retraining",
+    "Freelancer Performance",
 ])
 
 
@@ -367,7 +367,7 @@ with tab_ml:
         if model_info["n_real"] > 0:
             pct_real = model_info["n_real"] / model_info["total_rows"] * 100
             st.success(
-                f"✅ Model includes **{model_info['n_real']} real performance rows** "
+                f"Model includes **{model_info['n_real']} real performance rows** "
                 f"({pct_real:.1f}% of training data)."
             )
         else:
@@ -389,7 +389,7 @@ with tab_ml:
         delta="minimum 5 required" if n_available < 5 else "ready to retrain",
         delta_color="off" if n_available < 5 else "normal",
     )
-    ra2.metric("Status", "✅ Ready" if n_available >= 5 else "⏳ Need more data")
+    ra2.metric("Status", "Ready" if n_available >= 5 else "Need more data")
 
     if n_available == 0:
         st.warning(
@@ -427,7 +427,7 @@ with tab_ml:
     col_btn, col_info = st.columns([1, 2])
     with col_btn:
         retrain_clicked = st.button(
-            "🔁 Retrain model now",
+            "Retrain model now",
             type                = "primary",
             use_container_width = True,
             disabled            = (n_available < 5),
@@ -444,7 +444,7 @@ with tab_ml:
         if "error" in result:
             st.error(result["error"])
         else:
-            st.success("✅ Model retrained successfully!")
+            st.success("Model retrained successfully!")
             st.balloons()
 
             rm1, rm2, rm3, rm4, rm5, rm6 = st.columns(6)
@@ -511,7 +511,7 @@ with tab_freelancers:
 
         st.divider()
 
-        st.markdown('<div class="section-hdr">⭐ Leaderboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr">Leaderboard</div>', unsafe_allow_html=True)
 
         def stars(rating):
             if pd.isna(rating) or rating == 0:
@@ -597,10 +597,10 @@ with tab_freelancers:
 
         st.divider()
 
-        st.markdown('<div class="section-hdr">⚠️ Freelancers to review</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr">Freelancers to review</div>', unsafe_allow_html=True)
         underperf = get_underperforming_freelancers(min_campaigns=2)
         if underperf.empty:
-            st.success("No underperforming freelancers (avg rating < 3 with 2+ campaigns). ✅")
+            st.success("No underperforming freelancers (avg rating < 3 with 2+ campaigns).")
         else:
             st.warning(
                 f"{len(underperf)} freelancer(s) with avg rating below 3.0 "

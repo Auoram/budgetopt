@@ -174,7 +174,7 @@ hour     = datetime.now().hour
 greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
 username = current_username()
 
-st.markdown(f'<div class="main-title">👋 {greeting}, {username}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-title">{greeting}, {username}</div>', unsafe_allow_html=True)
 st.markdown(
     f'<div class="sub-title">{date.today().strftime("%A, %d %B %Y")} · '
     f"Here's what needs your attention today.</div>",
@@ -201,12 +201,12 @@ k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Total campaigns",      len(all_campaigns))
 k2.metric("This month",           len(this_month),
           delta=f"+{len(this_month)}" if this_month else None)
-k3.metric("🔴 Overdue tasks",     len(overdue_tasks),
+k3.metric("Overdue tasks",     len(overdue_tasks),
           delta="Need attention"  if overdue_tasks else "All on track",
           delta_color="inverse"   if overdue_tasks else "normal")
-k4.metric("⏳ Awaiting feedback", len(no_feedback),
+k4.metric("Awaiting feedback", len(no_feedback),
           delta_color="inverse"   if no_feedback else "normal")
-k5.metric("🚧 Blocked tasks",     len(blocked_tasks),
+k5.metric("Blocked tasks",     len(blocked_tasks),
           delta="Unblock needed"  if blocked_tasks else "None",
           delta_color="inverse"   if blocked_tasks else "normal")
 
@@ -219,9 +219,9 @@ col_alerts, col_activity = st.columns([3, 2], gap="large")
 with col_alerts:
 
     # 1. Overdue
-    st.markdown('<div class="section-hdr">🔴 Overdue tasks</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Overdue tasks</div>', unsafe_allow_html=True)
     if not overdue_tasks:
-        st.success("No overdue tasks — everything is on track. ✅")
+        st.success("No overdue tasks — everything is on track.")
     else:
         st.error(f"{len(overdue_tasks)} task(s) are past their due date and not done.")
         for t in overdue_tasks[:8]:
@@ -245,7 +245,7 @@ with col_alerts:
     st.divider()
 
     # 2. Upcoming
-    st.markdown('<div class="section-hdr">🟡 Due in the next 3 days</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Due in the next 3 days</div>', unsafe_allow_html=True)
     if not upcoming_tasks:
         st.info("No tasks due in the next 3 days.")
     else:
@@ -269,9 +269,9 @@ with col_alerts:
     st.divider()
 
     # 3. Blocked
-    st.markdown('<div class="section-hdr">🚧 Blocked tasks</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Blocked tasks</div>', unsafe_allow_html=True)
     if not blocked_tasks:
-        st.success("No blocked tasks. ✅")
+        st.success("No blocked tasks.")
     else:
         st.warning(f"{len(blocked_tasks)} task(s) are blocked and need attention.")
         for t in blocked_tasks[:6]:
@@ -281,7 +281,7 @@ with col_alerts:
             st.markdown(
                 f'<div class="alert-row alert-orange">'
                 f'<b>{t["title"]}</b> &nbsp;·&nbsp; {ch} &nbsp;·&nbsp; <i>{camp}</i><br>'
-                f'<span class="card-meta">🚧 Blocked &nbsp;·&nbsp; {owner}</span></div>',
+                f'<span class="card-meta">Blocked &nbsp;·&nbsp; {owner}</span></div>',
                 unsafe_allow_html=True,
             )
         if st.button("Unblock tasks →", key="btn_blocked"):
@@ -290,9 +290,9 @@ with col_alerts:
     st.divider()
 
     # 4. No team
-    st.markdown('<div class="section-hdr">👥 Campaigns without a team</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Campaigns without a team</div>', unsafe_allow_html=True)
     if not no_team:
-        st.success("All campaigns have a team assigned. ✅")
+        st.success("All campaigns have a team assigned. ")
     else:
         st.warning(f"{len(no_team)} campaign(s) have no freelancers assigned yet.")
         for c in no_team[:5]:
@@ -312,9 +312,9 @@ with col_alerts:
     st.divider()
 
     # 5. No tasks
-    st.markdown('<div class="section-hdr">🚀 Campaigns without tasks</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Campaigns without tasks</div>', unsafe_allow_html=True)
     if not no_tasks:
-        st.success("All campaigns have tasks generated. ✅")
+        st.success("All campaigns have tasks generated. ")
     else:
         st.warning(f"{len(no_tasks)} campaign(s) have no tasks generated yet.")
         for c in no_tasks[:5]:
@@ -337,7 +337,7 @@ with col_alerts:
 with col_activity:
 
     # Recent campaigns
-    st.markdown('<div class="section-hdr">🕐 Recent campaigns</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Recent campaigns</div>', unsafe_allow_html=True)
     if not all_campaigns:
         st.info("No campaigns yet. Use the Classic Form or AI Chat to start.")
     else:
@@ -348,7 +348,7 @@ with col_activity:
                 if c["source"] == "chat"
                 else '<span class="badge-form">📋 Form</span>'
             )
-            feedback_icon = "✅" if c["feedback_submitted"] else "⏳"
+            feedback_icon = "" if c["feedback_submitted"] else "⏳"
             st.markdown(
                 f'<div class="alert-row alert-neutral">'
                 f'{source_badge} &nbsp; <b>{c["company_name"]}</b> &nbsp;·&nbsp; {c["sector"].title()}<br>'
@@ -364,9 +364,9 @@ with col_activity:
     st.divider()
 
     # Feedback needed
-    st.markdown('<div class="section-hdr">📋 Awaiting post-campaign feedback</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Awaiting post-campaign feedback</div>', unsafe_allow_html=True)
     if not no_feedback:
-        st.success("All campaigns have post-campaign feedback. ✅")
+        st.success("All campaigns have post-campaign feedback. ")
     else:
         st.warning(
             f"{len(no_feedback)} campaign(s) missing real results. "
@@ -391,7 +391,7 @@ with col_activity:
     st.divider()
 
     # Quick stats
-    st.markdown('<div class="section-hdr">📊 At a glance</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">At a glance</div>', unsafe_allow_html=True)
 
     total_budget_all = sum(c["total_budget"] or 0 for c in all_campaigns)
     total_leads_all  = sum(c["total_leads"]  or 0 for c in all_campaigns)

@@ -186,11 +186,11 @@ def render_allocation_table(result, campaign):
     # ── Post-campaign redirect notice ─────────────────────
     st.divider()
     st.info(
-        "📋 **Campaign saved automatically.** "
+        "**Campaign saved automatically.** "
         "To submit post-campaign feedback, go to "
-        "**🗂️ Campaign History** in the sidebar. "
+        "**Campaign History** in the sidebar. "
         "To track performance and re-optimize, go to "
-        "**📈 Monitoring**."
+        "**Monitoring**."
     )
 
 
@@ -212,7 +212,7 @@ with col_title:
     )
 with col_reset:
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🔄 New chat", use_container_width=True):
+    if st.button("New chat", use_container_width=True):
         reset_conversation()
         st.rerun()
 

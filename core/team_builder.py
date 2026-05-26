@@ -433,14 +433,14 @@ def get_campaign_team(campaign_id: int) -> pd.DataFrame:
 
 
 ROLE_LABELS = {
-    "media_buyer":       "📣 Media Buyer",
-    "copywriter":        "✍️ Copywriter",
-    "graphic_designer":  "🎨 Graphic Designer",
-    "video_editor":      "🎬 Video Editor",
-    "web_developer":     "💻 Web Developer",
-    "data_analyst":      "📊 Data Analyst",
-    "seo_specialist":    "🌱 SEO Specialist",
-    "community_manager": "💬 Community Manager",
-    "project_manager":   "📋 Project Manager",
-    "translator":        "🌍 Translator",
+    "media_buyer":       "Media Buyer",
+    "copywriter":        "Copywriter",
+    "graphic_designer":  "Graphic Designer",
+    "video_editor":      "Video Editor",
+    "web_developer":     "Web Developer",
+    "data_analyst":      "Data Analyst",
+    "seo_specialist":    "SEO Specialist",
+    "community_manager": "Community Manager",
+    "project_manager":   "Project Manager",
+    "translator":        "Translator",
 }

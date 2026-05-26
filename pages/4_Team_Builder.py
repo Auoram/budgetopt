@@ -1,5 +1,5 @@
 """
-pages/2_Team_Builder.py
+pages/4_Team_Builder.py
 ───────────────────────
 Streamlit page — Phase 2: Human Resources.
 
@@ -18,11 +18,12 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
+import json
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-from core.auth import require_login
+from core.auth import require_login, COMPANY_NAME, LOGO_PATH
 from core.auth_ui import show_user_sidebar
 
 # ── Auth guard — must be first ────────────────────────────
@@ -40,6 +41,7 @@ from core.team_db import (
     get_all_freelancers,
     get_freelancers_by_role,
     get_campaign_team,
+    get_all_campaign_teams,
     save_team_assignments,
     team_cost_summary,
     add_freelancer,
@@ -48,9 +50,8 @@ from core.team_db import (
     remove_team_member,
 )
 from core.campaign_store import get_all_campaigns
-from core.feedback import init_db  
+from core.feedback import init_db
 from core.startup import ensure_model_exists
-from core.auth import COMPANY_NAME, LOGO_PATH
 
 # ── Startup ───────────────────────────────────────────────
 ensure_model_exists()
@@ -62,7 +63,7 @@ init_team_tables()
 # ─────────────────────────────────────────
 st.set_page_config(
     page_title            = f"{COMPANY_NAME} — Team Builder",
-    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "👥",
+    page_icon             = str(LOGO_PATH) if LOGO_PATH.exists() else "📊",
     layout                = "wide",
     initial_sidebar_state = "expanded",
 )
@@ -72,20 +73,19 @@ with st.sidebar:
 
 st.markdown("""
 <style>
-.main-title   { font-size:2rem; font-weight:600; margin-bottom:0.2rem; }
-.sub-title    { font-size:1rem; color:#666; margin-bottom:1.5rem; }
-.section-hdr  { font-size:1.05rem; font-weight:600; border-bottom:2px solid #f0f0f0;
-                padding-bottom:0.4rem; margin-bottom:0.8rem; }
-.role-card    { background:#f8f9fa; border-radius:8px; padding:0.8rem 1rem;
-                margin-bottom:0.6rem; border-left:4px solid #6366f1; }
+.main-title   { font-size:2rem; font-weight:600; margin-bottom:0.2rem;
+                color:var(--text-color); }
+.sub-title    { font-size:1rem; color:#888; margin-bottom:1.5rem; }
+.section-hdr  { font-size:1.05rem; font-weight:600;
+                border-bottom:2px solid rgba(128,128,128,0.2);
+                padding-bottom:0.4rem; margin-bottom:0.8rem;
+                color:var(--text-color); }
 .avail-yes    { color:#16a34a; font-weight:600; }
 .avail-no     { color:#dc2626; font-weight:600; }
-.cost-pill    { background:#ede9fe; color:#4f46e5; border-radius:20px;
-                padding:2px 10px; font-size:0.8rem; font-weight:600; display:inline-block; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">👥 Team Builder</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Team Builder</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">Auto-generate a team for any campaign — '
     'match freelancers by role, assign hours, and track budget.</div>',
@@ -96,9 +96,9 @@ st.markdown(
 # TABS
 # ─────────────────────────────────────────
 tab_assign, tab_roster, tab_history = st.tabs([
-    "🎯 Assign team to campaign",
-    "📋 Freelancer roster",
-    "🕑 Past assignments",
+    "Assign team to campaign",
+    "Freelancer roster",
+    "Past assignments",
 ])
 
 
@@ -107,7 +107,6 @@ tab_assign, tab_roster, tab_history = st.tabs([
 # ═══════════════════════════════════════════════════════════
 with tab_assign:
 
-    # ── Helper: load past campaigns from feedback.db ──────
     @st.cache_data(ttl=60)
     def load_past_campaigns():
         records = get_all_campaigns()
@@ -121,19 +120,19 @@ with tab_assign:
                     f"{float(r['total_budget']):,.0f} MAD · "
                     f"{r['run_at'][:10]}"
                 ),
-                "id":            r["id"],
-                "company_name":  r["company_name"],
-                "sector":        r["sector"],
-                "client_type":   r["client_type"],
-                "target_countries": r["target_countries"],  # JSON string
-                "goal":          r["goal"],
-                "horizon_months":r["horizon_months"],
-                "priority":      r["priority"],
-                "total_budget":  r["total_budget"],
-                "allowed_channels": r["allowed_channels"],  # JSON string
-                "age_min":       r.get("age_min", 18),
-                "age_max":       r.get("age_max", 45),
-                "audience_type": r.get("audience_type", "professionals"),
+                "id":                  r["id"],
+                "company_name":        r["company_name"],
+                "sector":              r["sector"],
+                "client_type":         r["client_type"],
+                "target_countries":    r["target_countries"],
+                "goal":                r["goal"],
+                "horizon_months":      r["horizon_months"],
+                "priority":            r["priority"],
+                "total_budget":        r["total_budget"],
+                "allowed_channels":    r["allowed_channels"],
+                "age_min":             r.get("age_min", 18),
+                "age_max":             r.get("age_max", 45),
+                "audience_type":       r.get("audience_type", "professionals"),
                 "max_pct_per_channel": r.get("max_pct_per_channel", 0.5),
             }
             for r in records
@@ -141,7 +140,6 @@ with tab_assign:
 
     past = load_past_campaigns()
 
-    # ── Source selection ──────────────────────────────────
     st.markdown('<div class="section-hdr">1 · Select campaign</div>', unsafe_allow_html=True)
 
     source = st.radio(
@@ -151,21 +149,20 @@ with tab_assign:
     )
 
     campaign: CampaignInput | None = None
-    campaign_id: int | None = None
+    campaign_id: int | None        = None
 
     if source == "Pick from past campaigns":
         if not past:
             st.warning(
-                "No past campaigns found. Run a campaign in the main app first, "
+                "No past campaigns found. Run a campaign first, "
                 "then come back here to assign a team."
             )
         else:
-            labels  = [p["label"] for p in past]
-            chosen  = st.selectbox("Campaign", labels)
-            rec     = next(p for p in past if p["label"] == chosen)
+            labels      = [p["label"] for p in past]
+            chosen      = st.selectbox("Campaign", labels)
+            rec         = next(p for p in past if p["label"] == chosen)
             campaign_id = rec["id"]
 
-            import json
             campaign = CampaignInput(
                 company_name        = rec["company_name"],
                 sector              = rec["sector"],
@@ -182,26 +179,26 @@ with tab_assign:
                 max_pct_per_channel = float(rec.get("max_pct_per_channel", 0.5)),
             )
 
-            # Show campaign summary
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Sector",   campaign.sector.title())
             c2.metric("Budget",   f"{int(campaign.total_budget):,} MAD")
             c3.metric("Horizon",  f"{campaign.horizon_months} months")
             c4.metric("Channels", str(len(campaign.allowed_channels)))
 
-    else:  # Enter manually
-        st.markdown("**Define a campaign to generate a team for:**")
+    else:
         mc1, mc2 = st.columns(2)
         with mc1:
-            m_company   = st.text_input("Company name", value="My Campaign")
-            m_sector    = st.selectbox("Sector", SECTORS)
-            m_budget    = st.number_input("Total budget (MAD)", min_value=10_000.0,
-                                          value=200_000.0, step=10_000.0)
-            m_horizon   = st.slider("Horizon (months)", 1, 12, 3)
+            m_company  = st.text_input("Company name", value="My Campaign")
+            m_sector   = st.selectbox("Sector", SECTORS)
+            m_budget   = st.number_input("Total budget (MAD)", min_value=10_000.0,
+                                         value=200_000.0, step=10_000.0)
+            m_horizon  = st.slider("Horizon (months)", 1, 12, 3)
         with mc2:
-            m_channels  = st.multiselect("Channels", CHANNELS, default=["facebook", "instagram", "google_ads"])
-            m_client    = st.radio("Client type", ["b2c", "b2b"], horizontal=True)
-            m_goal      = st.selectbox("Goal", ["generate_leads", "increase_sales", "brand_awareness"])
+            m_channels = st.multiselect("Channels", CHANNELS,
+                                        default=["facebook", "instagram", "google_ads"])
+            m_client   = st.radio("Client type", ["b2c", "b2b"], horizontal=True)
+            m_goal     = st.selectbox("Goal",
+                                      ["generate_leads", "increase_sales", "brand_awareness"])
 
         if m_channels:
             campaign = CampaignInput(
@@ -215,7 +212,7 @@ with tab_assign:
                 total_budget        = m_budget,
                 allowed_channels    = m_channels,
             )
-            campaign_id = None  # no DB record to link to
+            campaign_id = None
 
     st.divider()
 
@@ -224,33 +221,37 @@ with tab_assign:
         st.stop()
 
     # ── Build team plan ───────────────────────────────────
-    st.markdown('<div class="section-hdr">2 · Required roles & freelancer matches</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">2 · Required roles & freelancer matches</div>',
+        unsafe_allow_html=True,
+    )
 
     with st.spinner("Finding best freelancer matches…"):
         plan = build_team_plan(campaign, campaign_id)
 
-    n_roles = len(plan.required_roles)
-    est_cost = plan.total_estimated_cost_mad
+    n_roles    = len(plan.required_roles)
+    est_cost   = plan.total_estimated_cost_mad
     budget_pct = (est_cost / campaign.total_budget * 100) if campaign.total_budget > 0 else 0
 
-    # Summary metrics
     sm1, sm2, sm3 = st.columns(3)
-    sm1.metric("Roles needed",       str(n_roles))
-    sm2.metric("Est. team cost",     f"{int(est_cost):,} MAD")
+    sm1.metric("Roles needed",         str(n_roles))
+    sm2.metric("Est. team cost",       f"{int(est_cost):,} MAD")
     sm3.metric("% of campaign budget", f"{budget_pct:.1f}%",
                delta="within budget" if budget_pct < 15 else "high — consider reducing scope",
-               delta_color="normal" if budget_pct < 15 else "inverse")
+               delta_color="normal"  if budget_pct < 15 else "inverse")
 
     st.divider()
 
     # ── Per-role expanders ────────────────────────────────
-    st.markdown('<div class="section-hdr">3 · Select & configure freelancers</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">3 · Select & configure freelancers</div>',
+        unsafe_allow_html=True,
+    )
     st.caption(
         "Expand each role to pick a freelancer and set hours. "
         "The system pre-fills hours from channel benchmarks — adjust as needed."
     )
 
-    # Session state to hold selections
     if "team_selections" not in st.session_state:
         st.session_state["team_selections"] = {}
 
@@ -259,30 +260,27 @@ with tab_assign:
         candidates = plan.matches.get(req.role, [])
 
         with st.expander(
-            f"{role_label} — {req.hours}h · est. "
-            f"{int(req.estimated_cost_mad):,} MAD",
+            f"{role_label} — {req.hours}h · est. {int(req.estimated_cost_mad):,} MAD",
             expanded=(len(plan.required_roles) <= 4),
         ):
             st.caption(f"**Why needed:** {req.reason}")
 
             if not candidates:
                 st.warning(
-                    f"No freelancers found for **{role_label}** in the database. "
+                    f"No freelancers found for **{role_label}**. "
                     "Add one in the Freelancer Roster tab."
                 )
                 continue
 
-            # Candidate cards
             cand_options = {}
             for c in candidates:
-                avail_badge = (
-                    '<span class="avail-yes">● available</span>'
-                    if c.availability == "available"
-                    else '<span class="avail-no">● busy</span>'
+                rating_str = (
+                    f"  ★ {c.avg_rating:.1f}" if c.avg_rating else "  (unrated)"
                 )
+                avail_str = "available" if c.availability == "available" else "busy"
                 label = (
                     f"{c.name}  ·  {c.experience_level.title()}  ·  "
-                    f"{int(c.hourly_rate_mad)} MAD/h"
+                    f"{int(c.hourly_rate_mad)} MAD/h  ·  {avail_str}{rating_str}"
                 )
                 cand_options[label] = c
 
@@ -299,25 +297,23 @@ with tab_assign:
                 with col_h:
                     hours = st.number_input(
                         "Hours",
-                        min_value=1,
-                        max_value=500,
-                        value=int(req.hours),
-                        step=1,
-                        key=f"hours_{req.role}",
+                        min_value = 1,
+                        max_value = 500,
+                        value     = int(req.hours),
+                        step      = 1,
+                        key       = f"hours_{req.role}",
                     )
                 with col_b:
-                    computed_budget = hours * chosen_c.hourly_rate_mad
                     budget = st.number_input(
                         "Budget (MAD)",
-                        min_value=0.0,
-                        value=float(computed_budget),
-                        step=500.0,
-                        key=f"budget_{req.role}",
+                        min_value = 0.0,
+                        value     = float(hours * chosen_c.hourly_rate_mad),
+                        step      = 500.0,
+                        key       = f"budget_{req.role}",
                     )
 
                 st.caption(
-                    f"Specialties: {chosen_c.specialties}  ·  "
-                    f"Email: {chosen_c.email}"
+                    f"Specialties: {chosen_c.specialties}  ·  Email: {chosen_c.email}"
                 )
 
                 st.session_state["team_selections"][req.role] = {
@@ -328,28 +324,29 @@ with tab_assign:
                     "budget_mad":    budget,
                 }
             else:
-                # Remove from selections if deselected
                 st.session_state["team_selections"].pop(req.role, None)
 
     st.divider()
 
     # ── Save button ───────────────────────────────────────
-    st.markdown('<div class="section-hdr">4 · Confirm & save team</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">4 · Confirm & save team</div>',
+        unsafe_allow_html=True,
+    )
 
     selections = st.session_state.get("team_selections", {})
 
     if not selections:
         st.info("Select at least one freelancer above to enable saving.")
     else:
-        # Preview table
-        preview_rows = []
+        preview_rows      = []
         total_team_budget = 0.0
         for role, sel in selections.items():
             preview_rows.append({
-                "Role":          ROLE_LABELS.get(role, role),
-                "Freelancer":    sel["name"],
-                "Hours":         sel["hours"],
-                "Budget (MAD)":  f"{int(sel['budget_mad']):,}",
+                "Role":         ROLE_LABELS.get(role, role),
+                "Freelancer":   sel["name"],
+                "Hours":        sel["hours"],
+                "Budget (MAD)": f"{int(sel['budget_mad']):,}",
             })
             total_team_budget += sel["budget_mad"]
 
@@ -366,33 +363,31 @@ with tab_assign:
         save_label = (
             f"Save team for campaign #{campaign_id}"
             if campaign_id
-            else "Save team plan (no campaign ID — for preview only)"
+            else "Save team plan (no campaign ID — preview only)"
         )
 
         if st.button(save_label, type="primary", use_container_width=True):
             if campaign_id:
-                assignment_list = list(selections.values())
-                n = save_team_assignments(campaign_id, assignment_list)
-                st.success(
-                    f"✅ Team saved — {n} freelancer(s) confirmed for campaign #{campaign_id}."
-                )
+                n = save_team_assignments(campaign_id, list(selections.values()))
+                st.success(f"Team saved — {n} freelancer(s) confirmed for campaign #{campaign_id}.")
                 st.session_state["team_selections"] = {}
                 st.cache_data.clear()
             else:
                 st.info(
-                    "This campaign has no database ID (manual entry). "
-                    "Run it through the main app first to link a team to it."
+                    "This campaign has no database ID. "
+                    "Run it through the main app first to link a team."
                 )
 
-    # ── Existing team (if campaign_id known) ──────────────
+    # ── Existing team ─────────────────────────────────────
     if campaign_id:
         existing = get_campaign_team(campaign_id)
         if not existing.empty:
             st.divider()
-            st.markdown('<div class="section-hdr">Current confirmed team</div>', unsafe_allow_html=True)
-            disp = existing[[
-                "name", "role", "hours", "budget_mad", "status", "experience_level"
-            ]].copy()
+            st.markdown(
+                '<div class="section-hdr">Current confirmed team</div>',
+                unsafe_allow_html=True,
+            )
+            disp = existing[["name", "role", "hours", "budget_mad", "status", "experience_level"]].copy()
             disp.columns = ["Freelancer", "Role", "Hours", "Budget (MAD)", "Status", "Level"]
             disp["Budget (MAD)"] = disp["Budget (MAD)"].apply(lambda x: f"{int(x):,}")
             st.dataframe(disp, hide_index=True, use_container_width=True)
@@ -409,14 +404,16 @@ with tab_assign:
 # TAB 2 — FREELANCER ROSTER
 # ═══════════════════════════════════════════════════════════
 with tab_roster:
-    st.markdown('<div class="section-hdr">Freelancer database</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">Freelancer database</div>',
+        unsafe_allow_html=True,
+    )
 
     all_fl = get_all_freelancers()
 
     if all_fl.empty:
         st.warning("No freelancers found. Add one below.")
     else:
-        # Filters
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
             role_filter = st.selectbox(
@@ -424,25 +421,15 @@ with tab_roster:
                 ["All"] + sorted(all_fl["role"].unique().tolist()),
             )
         with fc2:
-            avail_filter = st.selectbox(
-                "Availability",
-                ["All", "available", "busy"],
-            )
+            avail_filter = st.selectbox("Availability", ["All", "available", "busy"])
         with fc3:
-            exp_filter = st.selectbox(
-                "Experience",
-                ["All", "senior", "mid", "junior"],
-            )
+            exp_filter = st.selectbox("Experience", ["All", "senior", "mid", "junior"])
 
         filtered = all_fl.copy()
-        if role_filter != "All":
-            filtered = filtered[filtered["role"] == role_filter]
-        if avail_filter != "All":
-            filtered = filtered[filtered["availability"] == avail_filter]
-        if exp_filter != "All":
-            filtered = filtered[filtered["experience_level"] == exp_filter]
+        if role_filter  != "All": filtered = filtered[filtered["role"]             == role_filter]
+        if avail_filter != "All": filtered = filtered[filtered["availability"]      == avail_filter]
+        if exp_filter   != "All": filtered = filtered[filtered["experience_level"]  == exp_filter]
 
-        # Display
         display_cols = ["id", "name", "role", "specialties",
                         "availability", "hourly_rate_mad", "experience_level", "email"]
         disp = filtered[display_cols].copy()
@@ -451,7 +438,6 @@ with tab_roster:
         st.dataframe(disp, hide_index=True, use_container_width=True)
         st.caption(f"{len(filtered)} freelancer(s) shown.")
 
-        # Toggle availability
         st.divider()
         st.markdown("**Update availability**")
         ua1, ua2, ua3 = st.columns([2, 2, 1])
@@ -468,9 +454,11 @@ with tab_roster:
                 st.cache_data.clear()
                 st.rerun()
 
-    # ── Add new freelancer ────────────────────────────────
     st.divider()
-    st.markdown('<div class="section-hdr">Add new freelancer</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">Add new freelancer</div>',
+        unsafe_allow_html=True,
+    )
 
     with st.expander("+ Add freelancer"):
         ROLES = [
@@ -481,18 +469,19 @@ with tab_roster:
         ]
         na1, na2 = st.columns(2)
         with na1:
-            new_name    = st.text_input("Full name")
-            new_role    = st.selectbox("Role", ROLES)
-            new_specs   = st.text_input(
+            new_name   = st.text_input("Full name")
+            new_role   = st.selectbox("Role", ROLES)
+            new_specs  = st.text_input(
                 "Specialties (comma-separated)",
                 placeholder="facebook,instagram,ecommerce",
             )
-            new_avail2  = st.selectbox("Availability", ["available", "busy"])
+            new_avail2 = st.selectbox("Availability", ["available", "busy"])
         with na2:
-            new_rate    = st.number_input("Hourly rate (MAD)", min_value=50.0, value=200.0, step=10.0)
-            new_level   = st.selectbox("Experience level", ["junior", "mid", "senior"])
-            new_email   = st.text_input("Email")
-            new_langs   = st.text_input("Languages (;-separated)", placeholder="fr;ar;en")
+            new_rate  = st.number_input("Hourly rate (MAD)", min_value=50.0,
+                                        value=200.0, step=10.0)
+            new_level = st.selectbox("Experience level", ["junior", "mid", "senior"])
+            new_email = st.text_input("Email")
+            new_langs = st.text_input("Languages (;-separated)", placeholder="fr;ar;en")
 
         if st.button("Add to roster", type="primary"):
             if not new_name.strip():
@@ -508,7 +497,7 @@ with tab_roster:
                     "email":            new_email.strip(),
                     "languages":        new_langs.strip(),
                 })
-                st.success(f"✅ Freelancer '{new_name}' added (ID #{fid}).")
+                st.success(f"Freelancer '{new_name}' added (ID #{fid}).")
                 st.cache_data.clear()
                 st.rerun()
 
@@ -517,48 +506,108 @@ with tab_roster:
 # TAB 3 — PAST ASSIGNMENTS & RATINGS
 # ═══════════════════════════════════════════════════════════
 with tab_history:
-    st.markdown('<div class="section-hdr">All campaign team assignments</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-hdr">All campaign team assignments</div>',
+        unsafe_allow_html=True,
+    )
 
-    from core.team_db import get_all_campaign_teams
     all_teams = get_all_campaign_teams()
 
     if all_teams.empty:
         st.info("No team assignments saved yet.")
     else:
-        disp_cols = [
-            "campaign_id", "name", "role",
-            "hours", "budget_mad", "status", "rating",
-        ]
+        # ── Assignments table ─────────────────────────────
+        disp_cols      = ["campaign_id", "name", "role", "hours",
+                          "budget_mad", "status", "rating"]
         available_cols = [c for c in disp_cols if c in all_teams.columns]
-        disp = all_teams[available_cols].copy()
-        disp.columns = [c.replace("_", " ").title() for c in available_cols]
+        disp           = all_teams[available_cols].copy()
+        disp.columns   = [c.replace("_", " ").title() for c in available_cols]
         if "Budget Mad" in disp.columns:
             disp["Budget Mad"] = disp["Budget Mad"].apply(
                 lambda x: f"{int(x):,}" if pd.notna(x) else "—"
             )
+        if "Rating" in disp.columns:
+            disp["Rating"] = disp["Rating"].apply(
+                lambda x: f"{'★' * int(x)}{'☆' * (5 - int(x))}" if pd.notna(x) else "—"
+            )
         st.dataframe(disp, hide_index=True, use_container_width=True)
 
-        # ── Rate a freelancer ─────────────────────────────
         st.divider()
-        st.markdown("**Rate a freelancer post-campaign**")
-        rc1, rc2, rc3, rc4 = st.columns([2, 2, 1, 2])
-        with rc1:
-            rate_row_id = st.number_input("Assignment row ID", min_value=1, step=1)
-        with rc2:
-            rate_stars  = st.slider("Rating (1–5 ⭐)", 1, 5, 4)
-        with rc3:
-            st.write("")
-            st.write("")
-        with rc4:
-            rate_notes  = st.text_input("Notes (optional)", placeholder="Great work on Reels!")
 
-        if st.button("Submit rating", type="primary"):
-            try:
-                rate_team_member(int(rate_row_id), int(rate_stars), rate_notes)
-                st.success(f"✅ Rating saved for assignment #{rate_row_id}.")
-                st.cache_data.clear()
-                st.rerun()
-            except ValueError as e:
-                st.error(str(e))
-            except Exception as e:
-                st.error(f"Error: {e}")
+        # ── Rate a freelancer ─────────────────────────────
+        st.markdown(
+            '<div class="section-hdr">Rate a freelancer</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Only show confirmed / active / done assignments
+        rateable = all_teams[
+            all_teams["status"].isin(["confirmed", "active", "done"])
+        ].copy()
+
+        if rateable.empty:
+            st.info("No confirmed assignments to rate yet.")
+        else:
+            # Build a human-readable label for each row
+            # Format: "Karim Bennani · Media Buyer · Campaign #3 · not rated"
+            def _make_label(r):
+                role_str   = str(r["role"]).replace("_", " ").title()
+                rated_str  = (
+                    f"★ {int(r['rating'])}/5"
+                    if pd.notna(r.get("rating"))
+                    else "not rated"
+                )
+                return (
+                    f"{r['name']}  ·  {role_str}  ·  "
+                    f"Campaign #{int(r['campaign_id'])}  ·  {rated_str}"
+                )
+
+            rateable["_label"] = rateable.apply(_make_label, axis=1)
+
+            rc1, rc2 = st.columns([3, 1])
+            with rc1:
+                chosen_label = st.selectbox(
+                    "Select assignment to rate",
+                    rateable["_label"].tolist(),
+                    key = "rate_select",
+                )
+            with rc2:
+                rate_stars = st.slider(
+                    "Rating",
+                    min_value = 1,
+                    max_value = 5,
+                    value     = 4,
+                    key       = "rate_stars",
+                )
+
+            rate_notes = st.text_input(
+                "Notes (optional)",
+                placeholder = "e.g. Delivered on time, great creatives",
+                key         = "rate_notes",
+            )
+
+            # Resolve selected row
+            selected_row = rateable[rateable["_label"] == chosen_label].iloc[0]
+            rate_row_id  = int(selected_row["id"])
+
+            st.caption(
+                f"You are rating **{selected_row['name']}** "
+                f"({str(selected_row['role']).replace('_', ' ').title()}) "
+                f"for Campaign **#{int(selected_row['campaign_id'])}** "
+                f"— assignment ID #{rate_row_id}"
+            )
+
+            if st.button("Submit rating →", type="primary", key="btn_rate"):
+                try:
+                    rate_team_member(rate_row_id, int(rate_stars), rate_notes)
+                    st.success(
+                        f"{selected_row['name']} rated "
+                        f"{'★' * rate_stars}{'☆' * (5 - rate_stars)} "
+                        f"({rate_stars}/5)"
+                    )
+                    st.cache_data.clear()
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
+                except Exception as e:
+                    st.error(f"Error: {e}")

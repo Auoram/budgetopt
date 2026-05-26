@@ -73,12 +73,12 @@ def get_clarification_question(missing_field: str) -> str:
         "allowed_channels": (
             "Which advertising channels would you like to use?\n\n"
             "Available options:\n"
-            "- 📘 **Facebook Ads**\n"
-            "- 📷 **Instagram Ads**\n"
-            "- 🔍 **Google Ads**\n"
-            "- 📧 **Email Marketing**\n"
-            "- 🌱 **SEO / Content**\n"
-            "- 🎵 **TikTok Ads**\n\n"
+            "- **Facebook Ads**\n"
+            "- **Instagram Ads**\n"
+            "- **Google Ads**\n"
+            "- **Email Marketing**\n"
+            "- **SEO / Content**\n"
+            "- **TikTok Ads**\n\n"
             "You can say *'all channels'* or list specific ones."
         ),
         "company_name": (

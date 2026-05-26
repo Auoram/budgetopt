@@ -89,7 +89,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">🚀 Execution</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Execution</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-title">Generate a step-by-step task list for your campaign, '
     'assign tasks to team members, and track execution progress.</div>',
@@ -150,10 +150,10 @@ def rec_to_campaign(rec: dict) -> CampaignInput:
 
 STATUS_OPTIONS  = ["todo", "in_progress", "done", "blocked"]
 STATUS_LABELS   = {
-    "todo":        "⬜ To do",
-    "in_progress": "🔵 In progress",
-    "done":        "✅ Done",
-    "blocked":     "🔴 Blocked",
+    "todo":        "To do",
+    "in_progress": "In progress",
+    "done":        "Done",
+    "blocked":     "Blocked",
 }
 CATEGORY_ORDER  = ["Setup", "Creative", "Launch", "Monitoring", "Reporting"]
 
@@ -161,9 +161,9 @@ CATEGORY_ORDER  = ["Setup", "Creative", "Launch", "Monitoring", "Reporting"]
 # TABS
 # ─────────────────────────────────────────
 tab_gen, tab_board, tab_progress = st.tabs([
-    "⚙️ Generate tasks",
-    "📋 Task board",
-    "📊 Progress",
+    "Generate tasks",
+    "Task board",
+    "Progress",
 ])
 
 
@@ -321,7 +321,7 @@ with tab_gen:
         )
     else:
         if st.button(
-            f"💾 Save {len(preview_tasks)} tasks for campaign #{campaign_id}",
+            f"Save {len(preview_tasks)} tasks for campaign #{campaign_id}",
             type="primary",
             use_container_width=True,
             key="btn_save_tasks",
@@ -333,7 +333,7 @@ with tab_gen:
                 replace     = True,
             )
             st.success(
-                f"✅ {len(preview_tasks)} tasks saved for campaign #{campaign_id}. "
+                f"{len(preview_tasks)} tasks saved for campaign #{campaign_id}. "
                 "Go to the **Task Board** tab to manage them."
             )
             st.cache_data.clear()
@@ -519,10 +519,10 @@ with tab_progress:
 
     pm1, pm2, pm3, pm4, pm5 = st.columns(5)
     pm1.metric("Total tasks",    summary["total"])
-    pm2.metric("✅ Done",         summary["done"])
-    pm3.metric("🔵 In progress",  summary["in_progress"])
-    pm4.metric("⬜ To do",        summary["todo"])
-    pm5.metric("🔴 Blocked",      summary["blocked"])
+    pm2.metric("Done",         summary["done"])
+    pm3.metric("In progress",  summary["in_progress"])
+    pm4.metric("To do",        summary["todo"])
+    pm5.metric("Blocked",      summary["blocked"])
 
     # Progress bar
     pct = summary["pct_done"]
@@ -558,7 +558,7 @@ with tab_progress:
     if overdue_df.empty:
         st.success("No overdue tasks. 🎉")
     else:
-        st.warning(f"⚠️ {len(overdue_df)} task(s) are past their due date and not done.")
+        st.warning(f"{len(overdue_df)} task(s) are past their due date and not done.")
         disp_cols = ["title", "channel", "category", "due_date", "status", "assigned_to"]
         available = [c for c in disp_cols if c in overdue_df.columns]
         disp = overdue_df[available].copy()
