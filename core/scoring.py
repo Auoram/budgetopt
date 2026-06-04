@@ -4,6 +4,17 @@ from core.data_model import CampaignInput
 
 SCORING_PATH = Path(__file__).parent.parent / "data" / "scoring_table.csv"
 
+# ─────────────────────────────────────────
+# CHANNEL / CLIENT-TYPE EXCLUSIONS
+# ─────────────────────────────────────────
+# These channels only make sense for one
+# client type. They must never appear in
+# campaigns of the opposite type — even
+# through the fallback chain.
+
+B2B_ONLY_CHANNELS = {"linkedin"}   # never shown for b2c campaigns
+B2C_ONLY_CHANNELS = {"tiktok"}     # never shown for b2b campaigns
+
 
 def load_scoring_table() -> pd.DataFrame:
     """Loads the CSV once and returns a DataFrame."""
@@ -24,10 +35,13 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
     For channels that are in allowed_channels but have no scoring
     row at all, we synthesise a row using the average of all other
     channels in the same sector so the channel is never silently dropped.
+
+    LinkedIn is always excluded for B2C campaigns.
+    TikTok is always excluded for B2B campaigns.
     """
     df = load_scoring_table()
 
-    # ── Step 1: progressively relax filters until we get rows ──
+    # ── Step 1: progressively relax filters ──────────────
 
     filtered = _filter(df, campaign.sector, campaign.goal,
                        campaign.client_type, campaign.clusters)
@@ -38,7 +52,7 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
                            None, campaign.clusters)
 
     if filtered.empty:
-        # relax goal (brand_awareness has no rows → fall back to generate_leads)
+        # relax goal
         filtered = _filter(df, campaign.sector, "generate_leads",
                            campaign.client_type, campaign.clusters)
 
@@ -57,7 +71,28 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
             "Add rows to scoring_table.csv."
         )
 
-    # ── Step 2: average across clusters ────────────────────────
+    # ── Step 1b: enforce B2B/B2C channel exclusions ──────
+    # Applied immediately after filtering so excluded channels
+    # never influence averages or synthesis.
+
+    if campaign.client_type == "b2c":
+        filtered = filtered[
+            ~filtered["channel"].isin(B2B_ONLY_CHANNELS)
+        ].copy()
+    elif campaign.client_type == "b2b":
+        filtered = filtered[
+            ~filtered["channel"].isin(B2C_ONLY_CHANNELS)
+        ].copy()
+
+    if filtered.empty:
+        raise ValueError(
+            f"No scoring data left after client_type exclusions "
+            f"for sector='{campaign.sector}', "
+            f"client_type='{campaign.client_type}'. "
+            "Add rows to scoring_table.csv."
+        )
+
+    # ── Step 2: average across clusters ──────────────────
 
     scores = (
         filtered.groupby("channel")
@@ -70,17 +105,31 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
         .reset_index()
     )
 
-    # ── Step 3: synthesise missing channels ─────────────────────
+    # ── Step 3: synthesise missing channels ──────────────
     # If a channel is in allowed_channels but has no scoring row,
-    # give it the sector average so it participates in the optimisation
+    # give it the sector average so it participates in optimisation
     # at a neutral score rather than being silently dropped.
+    # Respect B2B/B2C exclusions — never synthesise excluded channels.
 
-    missing_channels = [
-        ch for ch in campaign.allowed_channels
-        if ch not in scores["channel"].values
-    ]
+    if campaign.client_type == "b2c":
+        eligible_missing = [
+            ch for ch in campaign.allowed_channels
+            if ch not in scores["channel"].values
+            and ch not in B2B_ONLY_CHANNELS
+        ]
+    elif campaign.client_type == "b2b":
+        eligible_missing = [
+            ch for ch in campaign.allowed_channels
+            if ch not in scores["channel"].values
+            and ch not in B2C_ONLY_CHANNELS
+        ]
+    else:
+        eligible_missing = [
+            ch for ch in campaign.allowed_channels
+            if ch not in scores["channel"].values
+        ]
 
-    if missing_channels:
+    if eligible_missing:
         avg_cpl   = scores["cpl_mad"].mean()
         avg_conv  = scores["conversion_rate"].mean()
         avg_reach = scores["reach_score"].mean()
@@ -94,15 +143,15 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
                 "reach_score":      avg_reach,
                 "short_term_score": avg_st,
             }
-            for ch in missing_channels
+            for ch in eligible_missing
         ])
         scores = pd.concat([scores, synthetic], ignore_index=True)
         print(
             f" [scoring] Synthesised rows for missing channels: "
-            f"{missing_channels}"
+            f"{eligible_missing}"
         )
 
-    # ── Step 4: apply audience affinity multipliers ─────────────
+    # ── Step 4: apply audience affinity multipliers ───────
 
     affinity = campaign.audience_affinity
     scores["reach_score"] = scores["channel"].map(
@@ -112,7 +161,7 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
     )
     scores["reach_score"] = scores["reach_score"].clip(upper=10)
 
-    # ── Step 5: keep only allowed channels ──────────────────────
+    # ── Step 5: keep only allowed channels ────────────────
 
     scores = scores[
         scores["channel"].isin(campaign.allowed_channels)
@@ -122,11 +171,11 @@ def get_channel_scores(campaign: CampaignInput) -> pd.DataFrame:
 
 
 def _filter(
-    df: pd.DataFrame,
-    sector: str,
-    goal: str,
+    df:          pd.DataFrame,
+    sector:      str,
+    goal:        str,
     client_type: str | None,
-    clusters: list[str],
+    clusters:    list[str],
 ) -> pd.DataFrame:
     """Helper: filter scoring table with optional client_type."""
     mask = (

@@ -17,12 +17,32 @@ class AllocationResult:
     scored_df:          pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
+# ─────────────────────────────────────────
+# AVERAGE ORDER VALUE (MAD)
+# What one converted customer is worth
+# on their first purchase.
+# ─────────────────────────────────────────
 AVG_ORDER_VALUE = {
-    "fintech":   800,
-    "ecommerce": 350,
-    "saas":      1200,
-    "education": 600,
-    "health":    500,
+    "fintech":   2000,   # loan origination, account value, subscription
+    "ecommerce": 800,    # realistic Moroccan ecommerce basket
+    "saas":      3000,   # monthly plan × avg contract length
+    "education": 1500,   # course or program price
+    "health":    1200,   # consultation, product, membership
+}
+
+# ─────────────────────────────────────────
+# LTV MULTIPLIER
+# Accounts for repeat purchases / renewals.
+# Multiplied into revenue so estimates
+# reflect true customer value, not just
+# first-purchase revenue.
+# ─────────────────────────────────────────
+LTV_MULTIPLIER = {
+    "fintech":   3.0,    # avg customer active 3+ months
+    "ecommerce": 2.0,    # repeat orders over campaign period
+    "saas":      6.0,    # 6-month avg subscription retention
+    "education": 1.2,    # occasional upsell / second course
+    "health":    2.5,    # repeat visits and product reorders
 }
 
 
@@ -66,16 +86,15 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
     max_cpl  = scores["cpl_mad"].max()
     max_conv = scores["conversion_rate"].max()
 
-    # Guard against division by zero
-    scores["cpl_score"]   = (
+    scores["cpl_score"]  = (
         1 - (scores["cpl_mad"] / max_cpl)
         if max_cpl > 0 else 0.5
     )
-    scores["conv_score"]  = (
+    scores["conv_score"] = (
         scores["conversion_rate"] / max_conv
         if max_conv > 0 else 0.5
     )
-    scores["reach_norm"]  = scores["reach_score"] / 10
+    scores["reach_norm"] = scores["reach_score"] / 10
 
     # Soft cap for email/SEO in high_volume mode
     if campaign.priority == "high_volume":
@@ -92,7 +111,6 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
         w["conversion"] * scores["conv_score"]
     ) * scores["horizon_mult"]
 
-    # Guard: if all composites are 0, distribute evenly
     if scores["composite"].sum() == 0:
         scores["composite"] = 1.0
 
@@ -102,13 +120,9 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
     # ── Step 6: enforce max % per channel ─────────────────
     n_channels = len(scores)
 
-    # Edge case: single channel — give it 100% regardless of max_pct
     if n_channels == 1:
         scores["final_pct"] = 1.0
     else:
-        # Edge case: max_pct is so low that n_channels * max_pct < 1.0
-        # (e.g. 3 channels with 20% max = 60% < 100% — infeasible)
-        # In this case, raise max_pct to the minimum feasible value.
         effective_max = campaign.max_pct_per_channel
         min_feasible  = 1.0 / n_channels
         if effective_max < min_feasible:
@@ -121,7 +135,6 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
 
         scores["final_pct"] = scores["raw_pct"].clip(upper=effective_max)
 
-        # Redistribute excess proportionally (up to 30 iterations)
         for _ in range(30):
             total  = scores["final_pct"].sum()
             excess = 1.0 - total
@@ -130,16 +143,12 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
             mask = scores["final_pct"] < effective_max
             if not mask.any():
                 break
-            room  = scores.loc[mask, "composite"]
+            room = scores.loc[mask, "composite"]
             if room.sum() == 0:
-                # Distribute evenly among uncapped channels
-                scores.loc[mask, "final_pct"] += (
-                    excess / mask.sum()
-                )
+                scores.loc[mask, "final_pct"] += excess / mask.sum()
             else:
                 extra = (excess * room / room.sum()).clip(upper=effective_max)
                 scores.loc[mask, "final_pct"] += extra
-
             scores["final_pct"] = scores["final_pct"].clip(upper=effective_max)
 
     # Normalise to exactly 1.0
@@ -147,7 +156,6 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
     if total > 0:
         scores["final_pct"] = scores["final_pct"] / total
     else:
-        # Last resort: equal split
         scores["final_pct"] = 1.0 / n_channels
 
     # ── Step 7: MAD amounts ───────────────────────────────
@@ -155,10 +163,9 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
         scores["final_pct"] * campaign.total_budget
     ).round(0)
 
-    # Correct any rounding drift so budgets sum exactly to total
+    # Correct rounding drift
     diff = campaign.total_budget - scores["budget_mad"].sum()
     if diff != 0:
-        # Add the rounding difference to the largest channel
         idx_max = scores["budget_mad"].idxmax()
         scores.at[idx_max, "budget_mad"] += diff
 
@@ -167,16 +174,19 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
         scores["budget_mad"] / scores["cpl_mad"].clip(lower=1)
     ).round(0)
 
-    aov = AVG_ORDER_VALUE.get(campaign.sector, 500)
+    aov      = AVG_ORDER_VALUE.get(campaign.sector, 800)
+    ltv_mult = LTV_MULTIPLIER.get(campaign.sector, 1.5)
+
     scores["expected_revenue"] = (
         scores["expected_leads"]
         * scores["conversion_rate"]
         * aov
+        * ltv_mult
     ).round(0)
 
     # ── Step 9: explanations ──────────────────────────────
-    explanations  = {}
-    goal_verb     = {
+    explanations   = {}
+    goal_verb      = {
         "generate_leads":  "generate leads",
         "increase_sales":  "drive sales",
         "brand_awareness": "build brand awareness",
@@ -238,8 +248,10 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
                 "google_ads":"Moderate fit — works best for high-intent searches.",
                 "email":     "Lower fit — students tend to ignore promotional email.",
                 "seo":       "Long-term fit for students searching for courses.",
+                "linkedin":  "Poor fit for students — LinkedIn skews professional.",
             },
             "professionals": {
+                "linkedin":  "Strong fit — professionals actively engage on LinkedIn.",
                 "google_ads":"Strong fit — professionals search with high intent.",
                 "email":     "Good fit — professionals respond to relevant offers.",
                 "facebook":  "Moderate fit for professionals.",
@@ -248,6 +260,7 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
                 "seo":       "Good long-term fit — professionals research before buying.",
             },
             "business_owners": {
+                "linkedin":  "Top fit — business owners are LinkedIn's core audience.",
                 "google_ads":"Strong fit — business owners search for solutions actively.",
                 "email":     "Strong fit — direct and high conversion for B2B.",
                 "facebook":  "Moderate fit — reachable but noisy targeting.",
@@ -257,13 +270,13 @@ def optimize(campaign: CampaignInput) -> AllocationResult:
             },
         }
 
-        audience  = campaign.audience_type or "professionals"
-        fit_text  = (
+        audience = campaign.audience_type or "professionals"
+        fit_text = (
             audience_fit
             .get(audience, {})
             .get(ch, f"Benchmark CPL for this segment: {int(cpl)} MAD.")
         )
-        closing   = (
+        closing = (
             f"Allocated {pct}% ({budget:,} MAD) — "
             f"estimated CPL {int(cpl)} MAD · "
             f"conversion rate {conv}%."
