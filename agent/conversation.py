@@ -79,6 +79,7 @@ def get_clarification_question(missing_field: str) -> str:
             "- **Email Marketing**\n"
             "- **SEO / Content**\n"
             "- **TikTok Ads**\n\n"
+            "- **LinkedIn**\n\n"
             "You can say *'all channels'* or list specific ones."
         ),
         "company_name": (

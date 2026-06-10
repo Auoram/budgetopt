@@ -122,6 +122,6 @@ MISSING_BUDGET_MESSAGE = (
 MISSING_CHANNELS_MESSAGE = (
     "Which advertising channels would you like to use? "
     "Available: **Facebook Ads**, **Instagram Ads**, **Google Ads**, "
-    "**Email Marketing**, **SEO/Content**, **TikTok Ads**. "
+    "**Email Marketing**, **SEO/Content**, **TikTok Ads**, **LinkedIn**. "
     "You can say 'all channels' or list specific ones."
 )
